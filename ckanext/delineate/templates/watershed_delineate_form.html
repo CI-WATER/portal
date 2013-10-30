@@ -1,0 +1,108 @@
+{% extends "page.html" %}
+{% import 'macros/form.html' as form %}
+{{ form.errors(error_summary, type="warning") }}
+{% set data = data or {} %}
+{% set errors = errors or {} %}
+{% set stages = stages or {} %}
+{% set action = form_action or h.url_for(controller='ckanext.delineate.controllers.delineatewatershed:DelineatewatershedController', action='submit') %}
+
+{% block subtitle %}{{ _('Delinate Watershed') }}{% endblock %}
+
+{% block breadcrumb_content %}
+  <li class="active">{% link_for _('Delineate Watershed'), controller='ckanext.delineate.controllers.delineatewatershed:DelineatewatershedController', action='show_form' %}</li>
+{% endblock %}
+
+
+{%- block scripts %}
+  {{ super() }}
+  
+  {% resource 'delineate_resources/css/main.css' %}    
+  
+  <script type="text/javascript" src="https://maps.googleapis.com/maps/api/js?key=AIzaSyA4_XHfI4dLLx2yMK2bNn0AlVEn1GvF5AU&sensor=false">  </script>   
+
+  {% resource 'delineate_resources/scripts/delineate.js' %}
+{% endblock -%}
+{% block secondary_content %}
+	{% block info_module %}
+		<section class="module module-narrow module-shallow">
+			<div class="module-content">
+		    	<p>Click on the map to select an outlet location. Then click the Delineate button to start watershed delineation.</p>
+		    
+			{# using the html5 attribute 'data-module' to include the delineate.js file #}
+			<form name="map_buttons" method="get" action="{{ action }}" >
+				<p>
+					<button class="btn btn-primary" style='width:200px' id="btn_delineate" name="delineate" value="Delineate" onclick="delineateWatershed()" type="button">{{ _('Delineate') }}</button>
+				</p>				
+				<p>
+					<button class="btn" style='width:200px' id="btn_downloadshapefile" name="download" value="DownloadShapeFile" onclick="downloadShapeFile()" type="button">{{ _('Download Shape File') }}</button>
+				</p>
+				<p>
+					<button class="btn" style='width:200px' id="btn_save_as_CKAN_resource" name="save_as_CKAN_resource" value="SaveAsCKANResource" onclick="showSaveFileDialog()" type="button">{{ _('Save as a Resource') }}</button>
+				</p>
+				
+				<label >Selected outlet location</label>	
+				<input type="text" id="lat" name="lat" value = "{{ c.outletLat }}"  readonly style='width:185px' />
+				<input type="text" id="lon" name="lon" value = "{{ c.outletLon }}" readonly style='width:185px' />
+				
+			    <a href ="/delineate/downloadshapefile" type="hidden" id="downloadShapeFilesLink" ></a>
+			    
+			    <div id="spinner">				    
+	      			<div class="left">{{ _('Delineating...') }}</div>
+	      			<div class="loading-spinner"> </div>
+      			</div>
+      		    
+			</form>		
+			</div>	
+	    </section>	   
+    {% endblock %}
+{% endblock %}
+{% block primary_content %}
+    <section class="module offset1" >
+        <div class="module-content" >
+            {% block error_summary %}
+                {{ form.errors(error_summary) }}
+            {% endblock %}
+
+            <form name="delineate" method="get" action="{{ action }}" >
+
+				<div id = "alert_placeholder"></div>                
+
+                <div class="modal fade" id="saveFileModal" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true" style="z-index: -1">
+				    <div class="modal-dialog">
+				      <div class="modal-content">
+				        <div class="modal-header">
+				          <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
+				          <h4 class="modal-title">Save Shape File</h4>
+				        </div>
+				        <div class="modal-body">
+				          {% block form_field_shapefilename %}
+				    		{{ form.input('shapefilename', label = _('Enter shape file name*'), type='text', value='',
+				    		id='field-shapefilename', placeholder= _('shape file name'), error='',
+				    		classes=['control-medium'])}}
+				    	  {% endblock %}
+				    	  {% block form_field_shapefiledescription %}
+				    		{{ form.input('shapefiledescription', label = _('Enter shape file description*'), type='text', value='',
+				    		id='field-shapefiledescription', placeholder= _('shape file description'), error='',
+				    		classes=['control-medium'])}}
+				    	  {% endblock %}
+				        </div>
+
+				        <div class="modal-footer" >
+				          <button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>
+				          <button type="button" class="btn btn-primary" onclick="saveShapeFile()">Save</button>
+				        </div>
+
+				      </div><!-- /.modal-content -->
+
+				    </div><!-- /.modal-dialog -->
+  				</div><!-- /.modal -->  				
+  				
+             </form>
+             <div id="gmap" class="google-maps" style="min-width: 500px; min-height:700px; overflow:scroll"></div>
+         </div>
+     </section>
+
+{% endblock %}
+
+
+
