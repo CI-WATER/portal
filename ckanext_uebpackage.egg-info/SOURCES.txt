@@ -7,6 +7,7 @@ ckanext/uebpackage/plugin.py
 ckanext/uebpackage/tasks.py
 ckanext/uebpackage/controllers/__init__.py
 ckanext/uebpackage/controllers/packagecreate.py
+ckanext/uebpackage/controllers/uebexecute.py
 ckanext/uebpackage/templates/__init__.py
 ckanext_uebpackage.egg-info/PKG-INFO
 ckanext_uebpackage.egg-info/SOURCES.txt

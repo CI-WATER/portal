@@ -187,6 +187,6 @@ def retrieve_file_object_from_file_store(file_filestore_path):
     '''
     bucket_id = base.config.get('ckan.storage.bucket', 'default')   
     ofs = storage.get_ofs()
-    file_obj = ofs.get_stream(bucket_id, file_filestore_path)    
-    
+    file_obj = ofs.get_stream(bucket_id, file_filestore_path) 
+
     return file_obj

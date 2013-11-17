@@ -16,9 +16,12 @@ def run_apcheduler():
     source = 'uebpackage.plugin.run_scheduler.run_jobs():'
     @scheduler.interval_schedule(minutes=30)
     def run_jobs():
-        log.info(source + 'Started scheduled background jobs')      
+        log.info(source + 'Started scheduled background jobs')   
+        
+        # add taks is for debug   
         sum = tasks.add(2,3)
         print sum
+        
         try:            
             log.info(source + "Checking ueb model build request status")
             tasks.check_ueb_request_process_status()

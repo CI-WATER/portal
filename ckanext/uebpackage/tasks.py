@@ -22,16 +22,16 @@ def add(x, y):
 def check_ueb_request_process_status():
     source = 'uebpackage.tasks.check_ueb_request_process_status():'
     global service_host_address
-    service_request_url = '/api/CheckUEBPackageBuildStatus'
+    service_request_api_url = '/api/CheckUEBPackageBuildStatus'
     connection = httplib.HTTPConnection(service_host_address)
     request_resources_with_status_processing = _get_ueb_pkg_request_resources_by_processing_status('Processing')
     if len(request_resources_with_status_processing) == 0:
-        log.info(source + "No UEB model package build request has a status of Processing at this time")
+        log.info(source + "No UEB model package build request has a status of 'Processing' at this time")
         
     for resource in request_resources_with_status_processing:
         pkg_process_job_id = resource['PackageProcessJobID']
         resource_id = resource['id']
-        service_request_url += '?packageID=' + pkg_process_job_id
+        service_request_url = service_request_api_url + '?packageID=' + pkg_process_job_id
         connection.request('GET', service_request_url)
         service_call_results = connection.getresponse()
         
@@ -53,16 +53,16 @@ def check_ueb_request_process_status():
 def check_ueb_run_status():
     source = 'uebpackage.tasks.check_ueb_run_status():'
     global service_host_address
-    service_request_url = '/api/CheckUEBRunStatus'
+    service_request_api_url = '/api/CheckUEBRunStatus'
     connection = httplib.HTTPConnection(service_host_address)
     model_pkg_resources_with_run_status_processing = _get_ueb_model_pkg_resources_by_processing_status('Processing')
     if len(model_pkg_resources_with_run_status_processing) == 0:
-        log.info(source + "No UEB model package has a run status of Processing at this time")
+        log.info(source + "No UEB model package has a run status of 'Processing' at this time")
         
     for resource in model_pkg_resources_with_run_status_processing:
         pkg_process_job_id = resource['RunJobID']
         resource_id = resource['id']
-        service_request_url += '?uebRunJobID=' + pkg_process_job_id
+        service_request_url = service_request_api_url + '?uebRunJobID=' + pkg_process_job_id
         connection.request('GET', service_request_url)
         service_call_results = connection.getresponse()
         
@@ -84,17 +84,17 @@ def check_ueb_run_status():
 def retrieve_ueb_packages():
     source = 'uebpackage.tasks.retrieve_ueb_packages():'
     global service_host_address
-    service_request_url = '/api/GetUEBPackage'
+    service_request_api_url = '/api/GetUEBPackage'
     connection = httplib.HTTPConnection(service_host_address)
     request_resources_with_status_complete = _get_ueb_pkg_request_resources_by_processing_status('Complete')
     
     if len(request_resources_with_status_complete) == 0:
-        log.info(source + "No UEB model package build request has a status of Complete at this time")
+        log.info(source + "No UEB model package build request has a status of 'Complete' at this time")
         
     for resource in request_resources_with_status_complete:
         pkg_process_job_id = resource['PackageProcessJobID']
         resource_id = resource['id']
-        service_request_url += '?packageID=' + pkg_process_job_id
+        service_request_url = service_request_api_url + '?packageID=' + pkg_process_job_id
         connection.request('GET', service_request_url)
         service_call_results = connection.getresponse()
         
@@ -128,17 +128,17 @@ def retrieve_ueb_packages():
 def retrieve_ueb_run_output_packages():
     source = 'uebpackage.tasks.retrieve_ueb_run_output_packages():'
     global service_host_address
-    service_request_url = '/api/UEBModelRunOutput'
+    service_request_api_url = '/api/UEBModelRunOutput'
     connection =  httplib.HTTPConnection(service_host_address)
     model_pkg_resources_with_run_status_complete = _get_ueb_model_pkg_resources_by_processing_status('Complete')
     
     if len(model_pkg_resources_with_run_status_complete) == 0:
-        log.info(source + "No UEB model package has a run status of Complete at this time.")
+        log.info(source + "No UEB model package has a run status of 'Complete' at this time.")
         
     for resource in model_pkg_resources_with_run_status_complete:
         pkg_process_job_id = resource['RunJobID']
         resource_id = resource['id']
-        service_request_url += '?uebRunJobID=' + pkg_process_job_id
+        service_request_url = service_request_api_url + '?uebRunJobID=' + pkg_process_job_id
         connection.request('GET', service_request_url)
         service_call_results = connection.getresponse()
         
@@ -295,7 +295,8 @@ def _save_ueb_output_package_as_resource(service_call_results, model_input_pkg_r
         with open(ueb_output_pkg_file, 'wb') as file_obj:
             while True:
                 data = service_call_results.read(bytes_to_read)
-                if not data: break
+                if not data:
+                    break
                 file_obj.write(data)
     except Exception as e:       
         log.error(source + 'Failed to save the ueb model output package zip file to '
@@ -308,7 +309,7 @@ def _save_ueb_output_package_as_resource(service_call_results, model_input_pkg_r
                       'for package request resource ID: %s' % model_input_pkg_resource_id)
         
     # upload the file to CKAN file store
-    resource_metadata = _upload_file(file)
+    resource_metadata = _upload_file(ueb_output_pkg_file)
     if resource_metadata:
         log.info(source + 'UEB model output package was uploaded for model input '
                           'package resource ID:%s' % model_input_pkg_resource_id)

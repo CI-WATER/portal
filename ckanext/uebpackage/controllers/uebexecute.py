@@ -7,10 +7,11 @@ from datetime import datetime
 import os
 import shutil
 import httplib
+import time
 from .. import helpers as uebhelper
 
 tk = p.toolkit
-_ = tk._ # translator function
+_ = tk._    # translator function
 
 log = logging.getLogger('ckan.logic')
 
@@ -18,6 +19,7 @@ log = logging.getLogger('ckan.logic')
 class UEBexecuteController(base.BaseController):
     
     def select_model_package(self):
+        source = 'uebpackage.uebexecute.select_model_package():'
         errors = {}
         data = {}
         data['selected_pkg_file_id'] = None
@@ -28,28 +30,28 @@ class UEBexecuteController(base.BaseController):
         try:
             self._set_context_to_user_input_model_packages()
         except Exception as e:       
-               log.error(source + 'CKAN error: %s' % e)
-               tk.abort(400, 'CKAN error: %s' % e)  
+            log.error(source + 'CKAN error: %s' % e)
+            tk.abort(400, _('CKAN error: %s' % e))
                
         return tk.render('ueb_execute_form.html', extra_vars=vars)
-    
+        
     def execute(self):
         # retrieve the url of the selected model pkg
-        # read the content of the model package to the request object body
-        # send the request to app server and wait for response from the app server
-        # retrieve the output zip file sent by the app server and store that as a resource
-        # in the same dataset that has the model input pkg
+        # open the model pkg as a readable file object and pass the file object as the body of the
+        # web service request
+        # send the request to app server and wait to get the job ID
+        # Update the status of the model pkg to record this JobID        
         source = 'uebpackage.uebexecute.execute():'
         resource_show_action = tk.get_action('resource_show')
         ueb_model_pkg_CKAN_id = tk.request.params['uebpkgfile_id']  
         context = {'model': base.model, 'session': base.model.Session,
-               'user': tk.c.user or tk.c.author}
-        data_dict = {'id': ueb_model_pkg_CKAN_id }
+                   'user': tk.c.user or tk.c.author}
+
+        data_dict = {'id': ueb_model_pkg_CKAN_id}
         try:
             matching_file_resource = resource_show_action(context, data_dict)
             file_url = matching_file_resource.get('url')
-            file_name = matching_file_resource.get('name')
-            
+
             # replace the  '%3A' in the file url with ':' to get the correct folder name in the file system
             file_url = file_url.replace('%3A', ':')
             sting_to_search_in_file_url = 'storage/f/'
@@ -59,26 +61,32 @@ class UEBexecuteController(base.BaseController):
                     
             # get a file object in read mode pointing to the matching file in file store
             source_file_obj = uebhelper.retrieve_file_object_from_file_store(file_path)
-            file_data = source_file_obj.read()
-            source_file_obj.close()
+
         except Exception as e:       
-               log.error(source + 'CKAN error: %s' % e)
-               tk.abort(400, _('CKAN error: %s' % e))
-               pass    
-        # send request tp app server
+            log.error(source + 'CKAN error: %s' % e)
+            tk.abort(400, _('CKAN error: %s' % e))
+            pass
+
+        # send request to app server
+        # TODO: read the app server address from config (.ini) file
         service_host_address = 'thredds-ci-water.bluezone.usu.edu'
         service_request_url = '/api/RunUEB'
-        connection =  httplib.HTTPConnection(service_host_address)
-        headers = {'Content-Type':'application/text', 'Accept':'application/text'} 
-        request_body_content = file_data
-        
-        # call the service
-        connection.request('POST', service_request_url, request_body_content, headers)
-        
-        # retrieve response
+        connection = httplib.HTTPConnection(service_host_address)
+        headers = {'Content-Type': 'application/octet-stream', 'Connection': 'Keep-alive'}  # 'multipart/form-data'
+        # for debugging only
+        connection.set_debuglevel(1)
+
+        # Let's wait for 0.01 second before calling the webservice 
+        # Otherwise sometime we get
+        # 104 error - Connection Reset by Peer
+        # ref: http://stackoverflow.com/questions/383738/104-connection-reset-by-peer-socket-error-or-when-does-closing-a-socket-resu
+        time.sleep(0.01)
+        with open(source_file_obj.name, 'r') as ueb_model_pkg_file:
+            connection.request('POST', service_request_url, ueb_model_pkg_file, headers)
+
         service_call_results = connection.getresponse()
         if service_call_results.status == httplib.OK:
-            log.info(source + 'UEB execution was successful')
+            log.info(source + 'Request to execute UEB was successful.')
             service_response_data = service_call_results.read()
             connection.close()
             service_response_dict = json.loads(service_response_data)
@@ -105,9 +113,8 @@ class UEBexecuteController(base.BaseController):
         context = {'model': base.model, 'session': base.model.Session,
                    'user': tk.c.user or tk.c.author, 'for_view': True}
         
-        # get the resource that has the format field set to zip and description field contains 'shape'
-        # and the resource_type is file.upload
-        #data_dict = {'query': ['format:zip', 'name:ueb_model_pkg.zip']}
+        # get the resource that has the format field set to zip
+        # and the ResourceType is 'UEB Input Package'
         data_dict = {'query': ['format:zip', 'ResourceType:UEB Input Package']}
         shape_file_resources = resource_search_action(context, data_dict)['results']
         
@@ -115,14 +122,14 @@ class UEBexecuteController(base.BaseController):
         file_resources = []
         for file_resource in shape_file_resources:
             resource = {}
-            # filterout any deleted resources        
+            # filter out any deleted resources
             active_resource = uebhelper.get_resource(file_resource['id'])
             if not active_resource:
                 continue            
             
             #check if this input model pkg resource has a value for the 
             #extra metadata field- UEBRunStatus meaning this package has been
-            #already used for runiing UEB. In that case skip this resource
+            #already used for running UEB. In that case skip this resource
             ueb_run_status = file_resource.get('UEBRunStatus', None)
             if ueb_run_status:
                 continue
@@ -135,7 +142,12 @@ class UEBexecuteController(base.BaseController):
             underscore_index = pkg_title.find('_')
             if underscore_index != -1:
                 pkg_title = pkg_title[:underscore_index]
-                pkg_title = ' (' + pkg_title + ')'
+
+            max_len = 50
+            if len(pkg_title) > max_len:
+                pkg_title = pkg_title[:max_len] + '...'
+
+            pkg_title = ' (' + pkg_title + ')'
                 
             resource['id'] = file_resource['id']
             resource['url'] = file_resource['url']
@@ -161,26 +173,21 @@ class UEBexecuteController(base.BaseController):
         #           'user': base.c.user or base.c.author}
         
         # the data_dict needs to be the resource metadata for an existing resource
-        # (all fields and their coressponding values)
+        # (all fields and their corresponding values)
         # once we have retrieved a resource we can update value for any fields
-        # by assinging new value to that field except for the 'extras' field.
+        # by assigning new value to that field except for the 'extras' field.
         # the extras field is not part of the resource metadata when you retrieve a resource
         # from filestore. Since the extras field holds a json string that contains key/value pairs,
         # the way to update the extra field is to add a new key/value pair
         # to the resource metadata dict object where the key is not the name of a field in resource table.
         # For example, as shown below, we are storing a vlaue for PackageProcessJobID
         # which will be added/updated to the existing json string stored in the extras field
-        
-        #matching_resource['PackageProcessJobID'] = pkg_process_id
-        #data_dict = matching_resource
-        #updated_resource = resource_update_action(context, data_dict)    
-        data_dict = {}
-        data_dict['RunJobID'] = run_job_id    
-        updated_resource = uebhelper.update_resource(ueb_model_pkg_CKAN_resource_id, data_dict)    
+
+        data_dict = {'RunJobID': run_job_id}
+        updated_resource = uebhelper.update_resource(ueb_model_pkg_CKAN_resource_id, data_dict)
         return updated_resource  
     
     def _update_ueb_model_pkg_run_status(self, ueb_model_pkg_CKAN_resource_id, status):
-        data_dict = {}
-        data_dict['UEBRunStatus'] = status
-        updated_resource = uebhelper.update_resource(ueb_model_pkg_CKAN_resource_id, data_dict)    
+        data_dict = {'UEBRunStatus': status}
+        updated_resource = uebhelper.update_resource(ueb_model_pkg_CKAN_resource_id, data_dict)
         return updated_resource
