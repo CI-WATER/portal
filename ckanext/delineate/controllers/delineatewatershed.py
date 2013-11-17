@@ -11,6 +11,7 @@ import shutil
 import httplib
 import zipfile
 import glob
+import time
 from .. import helpers as d_helper
 
 tk = p.toolkit
@@ -86,7 +87,7 @@ class DelineatewatershedController(base.BaseController):
                          
         except Exception as e:       
             log.error(source + 'CKAN error: %s' % e)
-            tk.abort(400, _('CKAN error: %s' % e))
+            #tk.abort(400, _('CKAN error: %s' % e))
             base.response.body = 'CKAN shape file download error'
             base.response.status_int = 404
             pass
@@ -235,12 +236,18 @@ class DelineatewatershedController(base.BaseController):
                 file_data = file_obj.read()    
                 request_body_content = file_data
         except Exception as e:       
-                log.error(source + 'CKAN error: %s' % e)
+                log.error(source + ' CKAN error: %s' % e)
                 #ajax_response.success = False
                 #ajax_response.message = 'CKAN error:%s' % e
                 #return ajax_response.to_json()
-                tk.abort(400, 'CKAN error: %s' % e)
+                tk.abort(400, _('CKAN error: %s') % e)
                 pass
+        
+        # Let's wait for 0.01 second before calling the web service
+        # Otherwise sometime we get
+        # 104 error - Connection Reset by Peer
+        # ref: http://stackoverflow.com/questions/383738/104-connection-reset-by-peer-socket-error-or-when-does-closing-a-socket-resu
+        time.sleep(0.01)
         # call the service
         connection.request('POST', service_request_url, request_body_content, headers)
                 
@@ -276,6 +283,12 @@ class DelineatewatershedController(base.BaseController):
         service_request_url = '/api/EPADelineate' + qry_str
                 
         connection = httplib.HTTPConnection(service_host_address)
+        # Let's wait for 0.01 second before calling the web service
+        # Otherwise sometime we get
+        # 104 error - Connection Reset by Peer
+        # ref: http://stackoverflow.com/questions/383738/104-connection-reset-by-peer-socket-error-or-when-does-closing-a-socket-resu
+        time.sleep(0.01)
+        
         # call the service
         connection.request('GET', service_request_url, qry_str)
         # retrieve response
@@ -300,9 +313,15 @@ class DelineatewatershedController(base.BaseController):
                 with open(shapes_zipfile, 'w') as file_obj:
                     while True:
                         data = service_call_results.read(bytes_to_read)
-                        if not data: break
+                        if not data:
+                            break
                         file_obj.write(data)
-                        
+
+                # Let's wait for a second to completely finish getting data from the
+                # app server before we close the connection. Otherwise sometime we get
+                # 104 error - Connection Reset by Peer
+                # ref: http://stackoverflow.com/questions/383738/104-connection-reset-by-peer-socket-error-or-when-does-closing-a-socket-resu
+                time.sleep(1)
                 connection.close()
                 tk.c.shape_file_exists = True
                 base.session['id'] = base.session.id

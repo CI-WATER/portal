@@ -119,29 +119,30 @@
 			$.getJSON(CKAN_Action_URL)           		
 		   		.done(function(data) { 	           			
 		   			document.getElementById('spinner').style.visibility = 'hidden'; 
-				unfreezeWindow();
+					unfreezeWindow();
 				
-				alert(data.message);
-				if(data.success == true)
-				{	
-					//showalert(data.message, "alert-success");
-					document.getElementById("btn_downloadshapefile").disabled = false;
-					document.getElementById("btn_save_as_CKAN_resource").disabled = false;
-					showAllShapeFilesOnMap();	           				
-				}
-				else
-				{
-					//showalert(data.message, "alert-error");
-					document.getElementById("btn_delineate").disabled = false;					    	
-			    	document.getElementById("btn_downloadshapefile").disabled = true;
-			    	document.getElementById("btn_save_as_CKAN_resource").disabled = true;
-				}	           			    			
-			})
-			.fail(function(jqXHR, textStatus, errorThrown){
-				document.getElementById('spinner').style.visibility = 'hidden'; 
-				unfreezeWindow();
-				document.getElementById("btn_delineate").disabled = false;             	
-				alert('Delineation failed.' +'\n' + textStatus); 
+					alert(data.message);
+					if(data.success == true)
+					{	
+						//showalert(data.message, "alert-success");
+						document.getElementById("btn_downloadshapefile").disabled = false;
+						document.getElementById("btn_save_as_CKAN_resource").disabled = false;
+						showAllShapeFilesOnMap();	           				
+					}
+					else
+					{
+						//showalert(data.message, "alert-error");
+						document.getElementById("btn_delineate").disabled = false;					    	
+				    	document.getElementById("btn_downloadshapefile").disabled = true;
+				    	document.getElementById("btn_save_as_CKAN_resource").disabled = true;
+					}	           			    			
+				})
+				.fail(function(jqXHR, textStatus, errorThrown){
+					document.getElementById('spinner').style.visibility = 'hidden'; 
+					unfreezeWindow();
+					document.getElementById("btn_delineate").disabled = false;
+					//var err = textStatus + ", " + errorThrown; 					            	
+					alert('Delineation failed.' +'\n' + "Try a different outlet location."); 
 		    }); 
 	        
 	  } 
