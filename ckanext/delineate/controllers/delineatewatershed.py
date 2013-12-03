@@ -2,7 +2,6 @@ __author__ = 'pabitra'
 import ckan.lib.base as base
 import logging
 import ckan.plugins as p
-from ckan.lib.helpers import json
 from ckan.controllers import storage
 from datetime import datetime
 from ckan.common import _
@@ -26,10 +25,10 @@ class DelineatewatershedController(base.BaseController):
         errors = {}
         data = {}
         error_summary = {}
-        vars = {'data': data, 'errors': errors, 'error_summary': error_summary}
+        form_vars = {'data': data, 'errors': errors, 'error_summary': error_summary}
         tk.c.is_checkbox_checked = False
         tk.c.shape_file_exists = False
-        return tk.render('watershed_delineate_form.html', extra_vars=vars)
+        return tk.render('watershed_delineate_form.html', extra_vars=form_vars)
 
     def submit(self):
         if "delineate" in tk.request.params:
@@ -39,10 +38,10 @@ class DelineatewatershedController(base.BaseController):
             return self._send_delineation_request_to_app_server(lat, lon)
     
     def delineate_ws(self, lat, lon):
-          '''
-          This is desinged to be called as ajax call          
-          '''
-          return self._send_delineation_request_to_app_server(lat, lon)
+        """
+        This is designed to be called as ajax call
+        """
+        return self._send_delineation_request_to_app_server(lat, lon)
                
     def showWatershed(self, shapeFileType):
         if shapeFileType:
@@ -51,15 +50,19 @@ class DelineatewatershedController(base.BaseController):
     def downloadshapefile(self):
         # zip all files with name matching to shapeFileType
         source = 'delineate.delineatewatershed.downloadshapefile():'
-        ckan_default_dir = '/tmp/ckan'
+        ckan_default_dir = d_helper.StringSettings.ckan_user_session_temp_dir
         session_id = base.session['id']  # base.session.id
         shape_files_source_dir = os.path.join(ckan_default_dir, session_id, 'ShapeFiles')
-        target_zip_dir = os.path.join(ckan_default_dir, session_id, 'ShapeZippedFile') 
-        shape_zip_file = os.path.join(target_zip_dir, 'Watershed.zip')
+        target_zip_dir = os.path.join(ckan_default_dir, session_id, 'ShapeZippedFile')
+        shape_zip_filename = d_helper.StringSettings.ckan_delineated_watershed_download_filename
+        shape_zip_file = os.path.join(target_zip_dir, shape_zip_filename)
         
         if not os.path.isdir(shape_files_source_dir):
-            log.error(source + 'CKAN error: Expected shape file source dir path (%s) is missing.' % shape_files_source_dir)
+            log.error(source + 'CKAN error: Expected shape file source dir path (%s) is missing.'
+                      % shape_files_source_dir)
+
             tk.abort(400, _('Expected shape files source dir path is missing.'))
+            return
         
         try:
             if os.path.isdir(target_zip_dir):
@@ -90,29 +93,32 @@ class DelineatewatershedController(base.BaseController):
             #tk.abort(400, _('CKAN error: %s' % e))
             base.response.body = 'CKAN shape file download error'
             base.response.status_int = 404
-            pass
 
     def saveshapefile(self, lat, lon, shape_file_name, watershed_des):
         return self._save_shape_file_as_resource(lat, lon, shape_file_name, watershed_des)
         
     def _save_shape_file_as_resource(self, lat, lon, shape_file_name, watershed_des):
         source = 'delineate.delineatewatershed._save_shape_file_as_resource():'
-        response_data = None
-        
+        ajax_response = d_helper.AJAXResponse()
+
         if not self._validate_file_name(shape_file_name):
-            response_data = [{'message': 'Invalid shape file name:%s.' % shape_file_name}]
-            tk.abort(400, _('Invalid shape file name:%s' % shape_file_name)) 
-            #return json.dumps(response_data)   
-        
-        ckan_default_dir = '/tmp/ckan'
+            ajax_response.success = False
+            ajax_response.message = 'Invalid shape file name:%s.' % shape_file_name
+            return ajax_response.to_json()
+
+        ckan_default_dir = d_helper.StringSettings.ckan_user_session_temp_dir
         session_id = base.session['id']  # base.session.id
         shape_files_source_dir = os.path.join(ckan_default_dir, session_id, 'ShapeFiles')
         target_zip_dir = os.path.join(ckan_default_dir, session_id, 'ShapeZippedFile') 
         shape_zip_file = os.path.join(target_zip_dir,  shape_file_name + '.zip')
 
         if not os.path.isdir(shape_files_source_dir):
-            log.error(source + 'CKAN error: Expected shape file source dir path (%s) is missing.' % shape_files_source_dir)
-            tk.abort(400, _('Expected shape files source dir path is missing.'))
+            log.error(source + 'CKAN error: Expected shape file source dir path (%s) is missing.'
+                      % shape_files_source_dir)
+
+            ajax_response.success = False
+            ajax_response.message = _('CKAN error:Expected shape files source dir path is missing.')
+            return ajax_response.to_json()
 
         if os.path.exists(shape_zip_file) == False:
             #create the watershed zip file first
@@ -132,7 +138,9 @@ class DelineatewatershedController(base.BaseController):
             resource_metadata = self._upload_file(shape_zip_file)
         except Exception as e:
             log.error(source + 'CKAN error: Failed to upload shape file as a resource. Exception: %s.' % e)
-            tk.abort(400, _('Failed to upload shape file as a resource.'))
+            ajax_response.success = False
+            ajax_response.message = _('CKAN error:Failed to upload shape file as a resource.')
+            return ajax_response.to_json()
         
         # retrieve some of the file meta data
         resource_url = resource_metadata.get('_label') # this will return datetime stamp/filename
@@ -148,24 +156,30 @@ class DelineatewatershedController(base.BaseController):
         package_create_action = tk.get_action('package_create')
         
         # create unique package name using the current time stamp as a postfix to any package name
-        uniq_postfix = datetime.now().isoformat().replace(':', '-').replace('.', '-').lower()
+        unique_postfix = datetime.now().isoformat().replace(':', '-').replace('.', '-').lower()
         pkg_title = shape_file_name + '_'
         pkg_name = shape_file_name.replace(' ', '-').lower()
         data_dict = {
-                        'name': pkg_name + '_' + uniq_postfix,
-                        'title': pkg_title + uniq_postfix,
-                        'author': tk.c.userObj.name if tk.c.userObj else tk.c.author, # TODO: userObj is None always. Need to retrieve user full name
-                        'notes': 'This is a dataset that contains a watershed shape zip file for an outlet location at latitude:%s and longitude:%s' % (lat, lon),
-                        'extras': [{'key': 'DataSetType', 'value': 'Watershed Shape File'}]
+                    'name': pkg_name + '_' + unique_postfix,
+                    'title': pkg_title + unique_postfix,
+                    'author': tk.c.userObj.name if tk.c.userObj else tk.c.author,   # TODO: userObj is None always. Need to retrieve user full name
+                    'notes': 'This is a dataset that contains a watershed shape zip file for an outlet'
+                             ' location at latitude:%s and longitude:%s' % (lat, lon),
+                    'extras': [{'key': 'DataSetType', 'value': 'Watershed Shape File'}]
                     }
         
-        context = {'model': base.model, 'session': base.model.Session, 'user': tk.c.user or tk.c.author, 'save': 'save' }
+        context = {'model': base.model, 'session': base.model.Session, 'user': tk.c.user or tk.c.author, 'save': 'save'}
         try:
             pkg_dict = package_create_action(context, data_dict)
             log.info(source + 'A new dataset was created with name: %s' % data_dict['title'])
         except Exception as e:
-            log.error(source + 'Failed to create a new dataset for saving watershed shape file as a resource.\n Excpetion: %s' % e)
-            tk.abort(400, _('Failed to create a new dataset for saving watershed shape file as a resource.')) 
+            log.error(source + 'Failed to create a new dataset for saving watershed shape file as'
+                               ' a resource.\n Exception: %s' % e)
+
+            ajax_response.success = False
+            ajax_response.message = _('CKAN error: Failed to create a new dataset for'
+                                      ' saving watershed shape file as a resource.')
+            return ajax_response.to_json()
 
         pkg_id = pkg_dict['id']
         
@@ -186,22 +200,25 @@ class DelineatewatershedController(base.BaseController):
        
         try:
             resource_create_action(context, data_dict)
-            log.info(source + 'Watershed shape zip file was added as a resource under a dataset name:%s' % pkg_title + uniq_postfix)
-            response_data = [{'message': 'Watershed shape file was saved.'}]
+            log.info(source + 'Watershed shape zip file was added as a resource under a dataset'
+                              ' name:%s' % pkg_title + unique_postfix)
         except Exception as e:
-            log.error(source + 'Failed to add the watershed shape zip file as a resource.\nExcpetion: %s' % e)
-            tk.abort(400, _('Failed to add the watershed shape zip file as a resource.'))
-            pass
-        
-        return json.dumps(response_data)    
+            log.error(source + 'Failed to add the watershed shape zip file as a resource.\nException: %s' % e)
+            ajax_response.success = False
+            ajax_response.message = _('CKAN error:Failed to add the watershed shape zip file as a resource.')
+            return ajax_response.to_json()
+            
+        ajax_response.success = True
+        ajax_response.message = _('Watershed shape file was saved as a resource.')
+        return ajax_response.to_json()
     
     def _send_latlon_values_request_to_app_server(self, shapeFileType):
         source = 'delineate.delineatewatershed._send_latlon_values_request_to_app_server():'
 
-        #ajax_response = d_helper.AJAXResponse()
+        ajax_response = d_helper.AJAXResponse()
 
         # zip all files with name matching to shapeFileType
-        ckan_default_dir = '/tmp/ckan'
+        ckan_default_dir = d_helper.StringSettings.ckan_user_session_temp_dir
         session_id = base.session['id']  # base.session.id
         shape_files_source_dir = os.path.join(ckan_default_dir, session_id, 'ShapeFiles')
         target_zip_dir = os.path.join(ckan_default_dir, session_id, 'ShapeZippedFile') 
@@ -210,12 +227,10 @@ class DelineatewatershedController(base.BaseController):
         if not os.path.isdir(shape_files_source_dir):
             log.error(source + 'CKAN error: Expected shape file source dir path (%s) '
                                'is missing.' % shape_files_source_dir)
-            #ajax_response.success = False
-            #ajax_response.message = 'CKAN error:Expected shape files source dir path is missing.'
-            #return ajax_response.to_json()
+            ajax_response.success = False
+            ajax_response.message = 'CKAN error:Expected shape files source dir path is missing.'
+            return ajax_response.to_json()
 
-            tk.abort(400, _('Expected shape files source dir path is missing.'))
-        
         try:
             if os.path.isdir(target_zip_dir):
                 shutil.rmtree(target_zip_dir)
@@ -223,12 +238,12 @@ class DelineatewatershedController(base.BaseController):
             os.makedirs(target_zip_dir)
             files_to_archive = shape_files_source_dir + '/' + shapeFileType + '.*'
             zip_it = zipfile.ZipFile(shape_zip_file, 'w')
-            for file in glob.glob(files_to_archive):
-                zip_it.write(file, os.path.basename(file), compress_type=zipfile.ZIP_DEFLATED)
+            for shp_file in glob.glob(files_to_archive):
+                zip_it.write(shp_file, os.path.basename(shp_file), compress_type=zipfile.ZIP_DEFLATED)
             
             zip_it.close()
-            service_host_address = 'thredds-ci-water.bluezone.usu.edu'
-            service_request_url = '/api/ShapeLatLonValues'
+            service_host_address = d_helper.StringSettings.app_server_host_address
+            service_request_url = d_helper.StringSettings.app_server_api_get_shape_lat_lon_values_url
             connection = httplib.HTTPConnection(service_host_address)
             headers = {'Content-Type': 'application/text', 'Accept': 'application/text'}
             # get request data from the zip file
@@ -237,12 +252,10 @@ class DelineatewatershedController(base.BaseController):
                 request_body_content = file_data
         except Exception as e:       
                 log.error(source + ' CKAN error: %s' % e)
-                #ajax_response.success = False
-                #ajax_response.message = 'CKAN error:%s' % e
-                #return ajax_response.to_json()
-                tk.abort(400, _('CKAN error: %s') % e)
-                pass
-        
+                ajax_response.success = False
+                ajax_response.message = 'CKAN error:%s' % e
+                return ajax_response.to_json()
+
         # Let's wait for 0.01 second before calling the web service
         # Otherwise sometime we get
         # 104 error - Connection Reset by Peer
@@ -256,31 +269,29 @@ class DelineatewatershedController(base.BaseController):
         if service_call_results.status == httplib.OK:
             log.info(source + 'Lat/lon values obtained from app server')
             service_response_data = service_call_results.read()
-            #ajax_response.success = True
-            #ajax_response.message = 'Lat/lon values were obtained for the provided shape file.'
-            #ajax_response.json_data = service_response_data
+            ajax_response.success = True
+            ajax_response.message = 'Lat/lon values were obtained for the provided shape file.'
+            ajax_response.json_data = service_response_data
             connection.close()
-            #return ajax_response.to_json()
-            return service_response_data
-              
+            return ajax_response.to_json()
+
         else:
             connection.close()
             log.error(source + 'App server error: Request to get lat/lon '
                                'values for a shape file failed: %s' % service_call_results.reason)
-            #ajax_response.success = False
-            #ajax_response.message = 'App server error: Request to get lat/lon ' \
-            #                        'values for a shape file failed: %s' % service_call_results.reason
-            #return ajax_response.to_json()
-            tk.abort(400, _('App server error: Request to get lat/lon values for a shape file failed: %s') % service_call_results.reason)
+            ajax_response.success = False
+            ajax_response.message = 'App server error: Request to get lat/lon ' \
+                                    'values for a shape file failed: %s' % service_call_results.reason
+            return ajax_response.to_json()
 
     def _send_delineation_request_to_app_server(self, lat, lon):        
         source = 'delineate.delineatewatershed.packagerequest.__send_delineation_request_to_app_server():'
         ajax_response = d_helper.AJAXResponse()
                 
         tk.c.shape_file_exists = False
-        service_host_address = 'thredds-ci-water.bluezone.usu.edu'
+        service_host_address = d_helper.StringSettings.app_server_host_address
         qry_str = "?watershedOutletLat=" + lat + "&watershedOutletLon=" + lon
-        service_request_url = '/api/EPADelineate' + qry_str
+        service_request_url = d_helper.StringSettings.app_server_api_delineate_url + qry_str
                 
         connection = httplib.HTTPConnection(service_host_address)
         # Let's wait for 0.01 second before calling the web service
@@ -291,21 +302,28 @@ class DelineatewatershedController(base.BaseController):
         
         # call the service
         connection.request('GET', service_request_url, qry_str)
-        # retrieve response
+        # retrieve web service response
         service_call_results = connection.getresponse()
                 
-        if service_call_results.status == httplib.OK: 
-            ckan_default_dir = '/tmp/ckan'
-            # create a directory for savig the shape zip file
+        if service_call_results.status == httplib.OK:
+            ckan_default_dir = d_helper.StringSettings.ckan_user_session_temp_dir
+            # create a directory for saving the shape zip file
             # this will be a dir in the form of: /tmp/ckan/{session_id}
             session_id = base.session.id
             destination_dir = os.path.join(ckan_default_dir, session_id)
-            if os.path.isdir(destination_dir):
-                shutil.rmtree(destination_dir) 
-                   
-            os.makedirs(destination_dir)
-            
-            shapes_zipfile = os.path.join(destination_dir, 'shapefiles.zip')
+            try:
+                if os.path.isdir(destination_dir):
+                    shutil.rmtree(destination_dir)
+
+                os.makedirs(destination_dir)
+            except Exception as e:
+                log.error(source + 'Failed to either remove or create temporary dir:%s '
+                                   'needed to save the shape zip file obtained from app server.\n '
+                                   'Exception: %s' % (destination_dir, e))
+                raise e
+
+            shape_filename = d_helper.StringSettings.ckan_delineated_watershed_temporary_filename
+            shapes_zipfile = os.path.join(destination_dir, shape_filename)
             
             bytes_to_read = 16 * 1024
             
@@ -326,13 +344,13 @@ class DelineatewatershedController(base.BaseController):
                 tk.c.shape_file_exists = True
                 base.session['id'] = base.session.id
                 base.session.save()
+                log.info(source + 'Saved the shape zip file at %s temporarily.' % destination_dir)
             except Exception as e:  
                 connection.close()
                 log.error(source + 'Failed to save the shape files sent by the app server.\n Exception: %s' % e)
                 ajax_response.success = False
                 ajax_response.message = 'CKAN Error:Failed to save the generated shape files.'                
                 return ajax_response.to_json()
-                pass
         else:
             connection.close()
             log.error(source + 'App server returned error:%s' % service_call_results.reason)
@@ -343,12 +361,19 @@ class DelineatewatershedController(base.BaseController):
         # unzip the saved shapefile.zip 
         if tk.c.shape_file_exists:
             unzip_dir_path = os.path.join(destination_dir, "ShapeFiles")   
-            if os.path.isdir(unzip_dir_path):
-                shutil.rmtree(unzip_dir_path) 
-                   
-            os.makedirs(unzip_dir_path)
-            zip = zipfile.ZipFile(shapes_zipfile)
-            zip.extractall(path=unzip_dir_path)
+            try:
+                if os.path.isdir(unzip_dir_path):
+                    shutil.rmtree(unzip_dir_path)
+
+                os.makedirs(unzip_dir_path)
+            except Exception as e:
+                log.error(source + 'Failed to either remove or create temporary dir:%s '
+                                   'needed to unzip the shape zip file obtained from app server.\n '
+                                   'Exception: %s' % (destination_dir, e))
+                raise e
+
+            zipper = zipfile.ZipFile(shapes_zipfile)
+            zipper.extractall(path=unzip_dir_path)
             log.info(source + 'Shape files saved in CKAN temporarily at:%s' % unzip_dir_path)  
         
         tk.c.outletLat = lat
@@ -359,11 +384,11 @@ class DelineatewatershedController(base.BaseController):
         return ajax_response.to_json()
 
     def _upload_file(self, file_path):
-        '''
+        """
         uploads a file to ckan filestore as and returns file metadata
         related to its existance in ckan
         param file_path: name of the file with its current location (path)
-        '''
+        """
         source = 'delineate.delineatewatershed._upload_file():'
         # this code has been implemented based on the code for the upload_handle() method
         # in storage.py    
@@ -377,7 +402,6 @@ class DelineatewatershedController(base.BaseController):
         params['key'] = file_key
         try:
             with open(file_path, 'r') as file_obj:
-                #file_data = file_obj.read()    
                 ofs = storage.get_ofs()
                 resource_metadata = ofs.put_stream(bucket_id, label, file_obj, params)
                 log.info(source + 'File upload was successful for file: %s' % file_path)
@@ -388,12 +412,11 @@ class DelineatewatershedController(base.BaseController):
         return resource_metadata 
 
     def _validate_file_name(self, file_name):
-        '''
-        Vlidates file_name and returns true
+        """
+        Validates file_name and returns true
         if it contains only alphanumeric chars and dash, hyphen or space
         characters. Otherwise returns false.
-        '''
-        
+        """
         import string
         allowed_chars = string.ascii_letters + string.digits + '_-' + ' '
         file_name = string.strip(file_name)

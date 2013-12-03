@@ -6,18 +6,27 @@
       var gmap = null;
       var outletLat = null;
       var outletLon = null;
+      var isMapInDragMode = false;
+
       function initialize() {
         var mapOptions = {
 				          center: new google.maps.LatLng(38, -97),
 				          zoom: 5,
 				          scaleControl: true,
+				          draggable: false,
 				          mapTypeId: google.maps.MapTypeId.TERRAIN
 				        };
         
         gmap = new google.maps.Map(document.getElementById("gmap"), mapOptions);
         
         google.maps.event.addListener(gmap, 'click', function(event){
-            
+
+                    if(isMapInDragMode == true)
+                    {
+                        isMapInDragMode = false;
+                        return;
+                    }
+
                 	removeAllShapes();                                       
                     document.getElementById("lat").value = event.latLng.lat();
                     document.getElementById("lon").value = event.latLng.lng();                    
@@ -27,17 +36,35 @@
 	    	
                     var currentZoomLevel = gmap.getZoom();
                     markSelectedOutletPointOnMap(event.latLng.lat(), event.latLng.lng(), currentZoomLevel);
+
+                    // change the cursor to pointer
+                    gmap.setOptions({draggable : false});
                 
-       		});          
+       		});
+
+       	google.maps.event.addListener(gmap, 'mousedown', function(event){
+       		            gmap.setOptions({draggable : true});
+       	});
+
+        google.maps.event.addListener(gmap, 'drag', function(event){
+       		          isMapInDragMode = true;
+
+       	});
+
+       	google.maps.event.addListener(gmap, 'dragend', function(event){
+       		          gmap.setOptions({draggable : false});
+
+       	});
+
       }
-      
+
+      document.getElementById('spinner').style.visibility = 'hidden';
       document.getElementById("btn_delineate").disabled = true;	    	
 	  document.getElementById("btn_downloadshapefile").disabled = true;
 	  document.getElementById("btn_save_as_CKAN_resource").disabled = true;
 	    	
       google.maps.event.addDomListener(window, 'load', initialize);      
-      document.getElementById('spinner').style.visibility = 'hidden'; 
-            
+
       function markSelectedOutletPointOnMap(lat, lon, zoomLevel)
       {
       	var shapeStrokeColor = "#190707"; // default black
@@ -71,14 +98,14 @@
             showShapeOnMap("Watershedpoint", ShapeFileType.Point, function(){
                 //then show watershed boundary
                 showShapeOnMap("Watershed", ShapeFileType.Watershed, function(){
-                    //then show stream flow lines
-                    showShapeOnMap("Stream", ShapeFileType.Stream, function(){
+                    //then show stream flow lines - uncomment the 3 lines below to show stream lines
+                    //showShapeOnMap("Stream", ShapeFileType.Stream, function(){
                         //unfreezeWindow();
-                    });
+                    //});
                 });
             });
             
-            markSelectedOutletPointOnMap(outletLat, outletLon, 15);            
+            markSelectedOutletPointOnMap(outletLat, outletLon, 10);
         }
         
 		function removeAllShapes()
@@ -115,8 +142,11 @@
 			outletLat = document.getElementById("lat").value;
 			outletLon = document.getElementById("lon").value;
 			var CKAN_Action_URL = '/delineate/delineate_ws/' + outletLat +'/' + outletLon;
-			
-			$.getJSON(CKAN_Action_URL)           		
+			$.ajaxSetup({
+                timeout: 120000 // 120 seconds
+            });
+
+			$.getJSON(CKAN_Action_URL)
 		   		.done(function(data) { 	           			
 		   			document.getElementById('spinner').style.visibility = 'hidden'; 
 					unfreezeWindow();
@@ -141,8 +171,15 @@
 					document.getElementById('spinner').style.visibility = 'hidden'; 
 					unfreezeWindow();
 					document.getElementById("btn_delineate").disabled = false;
-					//var err = textStatus + ", " + errorThrown; 					            	
-					alert('Delineation failed.' +'\n' + "Try a different outlet location."); 
+					if(textStatus == "timeout")
+					{
+					    alert("Server timeout. This may be too big a watershed." + '\n' + "Try a different outlet location.");
+					}
+					else
+					{
+					    alert('Delineation failed.' +'\n' + "Try a different outlet location.");
+					}
+
 		    }); 
 	        
 	  } 
@@ -154,16 +191,23 @@
       {            
             // a random number is added to the end of the actual query string
             // to avoid IE caching the ajax response content
-            //Ref: http://viralpatel.net/blogs/ajax-cache-problem-in-ie/
-            //var showShapePageUrl = 'index.php?option=com_gmap&task=showshape' + "&random=" + Math.random();
+            // Ref: http://viralpatel.net/blogs/ajax-cache-problem-in-ie/
+            // var showShapePageUrl = 'index.php?option=com_gmap&task=showshape' + "&random=" + Math.random();
             var CKAN_Action_URL = '/delineate/showWatershed/' + shapeFileName;            
            	$.getJSON(CKAN_Action_URL)           		
            		.done(function(data) { 
-           			addShapeToMap(data, shapeFileType); 
-           			callback();  		        			
+           			if(data.success == true)
+           			{
+           			    addShapeToMap(JSON.parse(data.json_data), shapeFileType);
+           			    callback();
+           			}
+           			else
+           			{
+           			    alert(data.message);
+           			}
            		})
            		.fail(function(jqXHR, textStatus, errorThrown){
-           			alert('getJSON request for getting lat/lon values failed! ' + textStatus); 
+           			alert('Request for getting lat/lon values for shape file display failed! ' + textStatus);
            		});  
       }
         
@@ -282,11 +326,25 @@
 	    
 	   	$.getJSON(CKAN_Action_URL)           		
 	   		.done(function(data) { 	           			
-	   			alert('Watershed shape file was saved as a resource.');     			
+	   			if(data.success == true)
+	   			{
+	   			    alert('Watershed shape file was saved as a resource.');
+	   			}
+	   			else{
+	   			    alert(data.message);
+	   			    document.getElementById("btn_save_as_CKAN_resource").disabled = false;
+	   			}
 	   		})
 	   		.fail(function(jqXHR, textStatus, errorThrown){
-	   			document.getElementById("btn_save_as_CKAN_resource").disabled = false;             	
-	   			alert('Failed to save the shape file as a resource.' +'\n' + textStatus); 
+	   			document.getElementById("btn_save_as_CKAN_resource").disabled = false;
+	   			if(errorThrown == 'Not Found')
+	   			{
+	   			    alert('Invalid file name or description.');
+	   			}
+	   			else
+	   			{
+	   			    alert('Failed to save the shape file as a resource.' +'\n' + textStatus);
+	   			}
 	       	});  
 		                            
 	}

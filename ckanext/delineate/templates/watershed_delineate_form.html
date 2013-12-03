@@ -22,6 +22,7 @@
 
   {% resource 'delineate_resources/scripts/delineate.js' %}
 {% endblock -%}
+
 {% block secondary_content %}
 	{% block info_module %}
 		<section class="module module-narrow module-shallow">
@@ -46,7 +47,7 @@
 				
 			    <a href ="/delineate/downloadshapefile" type="hidden" id="downloadShapeFilesLink" ></a>
 			    
-			    <div id="spinner">				    
+			    <div id="spinner" style="visibility:hidden">
 	      			<div class="left">{{ _('Delineating...') }}</div>
 	      			<div class="loading-spinner"> </div>
       			</div>
@@ -56,9 +57,10 @@
 	    </section>	   
     {% endblock %}
 {% endblock %}
+
 {% block primary_content %}
-    <section class="module offset1" >
-        <div class="module-content" >
+     <section class="module offset1" >
+        <div class="module-content" style="margin-top:-14px;padding:0px 5px 5px 5px" >
             {% block error_summary %}
                 {{ form.errors(error_summary) }}
             {% endblock %}
@@ -103,6 +105,7 @@
      </section>
 
 {% endblock %}
+
 
 
 
