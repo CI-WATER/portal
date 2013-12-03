@@ -1,22 +1,23 @@
 import ckan.plugins as p
-from routes import url_for
 from apscheduler.scheduler import Scheduler
 from ckan.common import c
-import uuid
-from ckan.lib.celery_app import celery
 import ckan.lib.helpers as h 
 import tasks 
 import os
 import logging
+import ckan.model.meta as meta
 
 log = logging.getLogger('ckan.logic')
+
 
 def run_apcheduler():
     scheduler = Scheduler()
     source = 'uebpackage.plugin.run_scheduler.run_jobs():'
+
     @scheduler.interval_schedule(minutes=30)
     def run_jobs():
-        log.info(source + 'Started scheduled background jobs')   
+        session = meta.Session
+        log.info(source + 'Started scheduled background jobs')
         
         # add taks is for debug   
         sum = tasks.add(2,3)
@@ -51,7 +52,8 @@ def run_apcheduler():
         except Exception as e:
             log.error(source + 'Failed to retrieve ueb model output package from app server.\nException:%s' % e)
             pass
-        
+
+        session.remove()
         log.info(source + 'Finished scheduled background jobs')
 
     #scheduler.configure(options_from_ini_file)

@@ -2,10 +2,6 @@ import ckan.lib.base as base
 import logging
 import ckan.plugins as p
 from ckan.lib.helpers import json
-from ckan.controllers import storage
-from datetime import datetime
-import os
-import shutil
 import httplib
 import time
 from .. import helpers as uebhelper
@@ -24,7 +20,7 @@ class UEBexecuteController(base.BaseController):
         data = {}
         data['selected_pkg_file_id'] = None
         error_summary = {}
-        vars = {'data': data, 'errors': errors, 'error_summary': error_summary}
+        form_vars = {'data': data, 'errors': errors, 'error_summary': error_summary}
         tk.c.is_checkbox_checked = False
         tk.c.shape_file_exists = True
         try:
@@ -33,9 +29,10 @@ class UEBexecuteController(base.BaseController):
             log.error(source + 'CKAN error: %s' % e)
             tk.abort(400, _('CKAN error: %s' % e))
                
-        return tk.render('ueb_execute_form.html', extra_vars=vars)
+        return tk.render('ueb_execute_form.html', extra_vars=form_vars)
         
     def execute(self):
+        # TODO: Instead of aborting in case of error, pass an error message to html page
         # retrieve the url of the selected model pkg
         # open the model pkg as a readable file object and pass the file object as the body of the
         # web service request
@@ -65,12 +62,13 @@ class UEBexecuteController(base.BaseController):
         except Exception as e:       
             log.error(source + 'CKAN error: %s' % e)
             tk.abort(400, _('CKAN error: %s' % e))
-            pass
 
         # send request to app server
         # TODO: read the app server address from config (.ini) file
-        service_host_address = 'thredds-ci-water.bluezone.usu.edu'
-        service_request_url = '/api/RunUEB'
+        #service_host_address = 'thredds-ci-water.bluezone.usu.edu'
+        service_host_address = uebhelper.StringSettings.app_server_host_address
+        #service_request_url = '/api/RunUEB'
+        service_request_url = uebhelper.StringSettings.app_server_api_run_ueb_url
         connection = httplib.HTTPConnection(service_host_address)
         headers = {'Content-Type': 'application/octet-stream', 'Connection': 'Keep-alive'}  # 'multipart/form-data'
         # for debugging only
@@ -100,12 +98,17 @@ class UEBexecuteController(base.BaseController):
             log.error(source + 'App server error: Request to run UEB failed: %s' % service_call_results.reason)
             tk.abort(400, _('App server error: Request to run UEB failed: %s' % service_call_results.reason))
         
-        self._update_ueb_model_pkg_run_job_id(ueb_model_pkg_CKAN_id, ueb_run_job_id)
-        self._update_ueb_model_pkg_run_status(ueb_model_pkg_CKAN_id, 'Processing')       
-        base.session.clear()        
-        tk.c.ueb_run_job_id = ueb_run_job_id
-        return tk.render('ueb_run_request_submission.html')
-            
+        if self._update_ueb_model_pkg_run_job_id(ueb_model_pkg_CKAN_id, ueb_run_job_id) is None:
+            tk.abort(400, _('CKAN error: Failed to update UEB input model package resource job ID.'))
+
+        job_status_processing = uebhelper.StringSettings.app_server_job_status_processing
+        if self._update_ueb_model_pkg_run_status(ueb_model_pkg_CKAN_id, job_status_processing) is None:
+            tk.abort(400, _('CKAN error: Failed to update UEB input model package resource status.'))
+        else:
+            base.session.clear()
+            tk.c.ueb_run_job_id = ueb_run_job_id
+            return tk.render('ueb_run_request_submission.html')
+
     def _set_context_to_user_input_model_packages(self):
         # note: resource_search returns a list of matching resources
         # that can include any deleted resources
@@ -159,14 +162,16 @@ class UEBexecuteController(base.BaseController):
     
     def _update_ueb_model_pkg_run_job_id(self, ueb_model_pkg_CKAN_resource_id, run_job_id):
     
-        '''
-        Updates a ueb model package request resource's 'extras' field to include 
-        PackageProcessJobID: param pkg_process_id
+        """
+        Updates a ueb model package request resource's 'extras' field to include
+        RunJobID: param pkg_process_id
         Note that the extra field in resource table holds a json string
-        
-        param ueb_model_pkg_request_resource_id: id of the resource to be updated
-        param pkg_process_id: package id returned from app server responsible for generating the model package
-        '''
+
+        param ueb_model_pkg_CKAN_resource_id: id of the resource to be updated
+        param run_job_id: ueb run job id returned from app server responsible for running ueb
+        @rtype: updated resource dictionary if successful otherwise None
+        """
+        # TODO: the following documentation needs to be updated to match the parameters of this function
         #matching_resource = _get_resource(ueb_model_pkg_request_resource_id)    
         #resource_update_action = tk.get_action('resource_update')
         #context = {'model': base.model, 'session': base.model.Session,
@@ -188,6 +193,7 @@ class UEBexecuteController(base.BaseController):
         return updated_resource  
     
     def _update_ueb_model_pkg_run_status(self, ueb_model_pkg_CKAN_resource_id, status):
+        # TODO: include docstring
         data_dict = {'UEBRunStatus': status}
         updated_resource = uebhelper.update_resource(ueb_model_pkg_CKAN_resource_id, data_dict)
         return updated_resource

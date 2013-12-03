@@ -12,7 +12,7 @@ _ = tk._  # translator function
 
 log = logging.getLogger('ckan.logic')
 
-service_host_address = 'thredds-ci-water.bluezone.usu.edu'
+service_host_address = uebhelper.StringSettings.app_server_host_address  # 'thredds-ci-water.bluezone.usu.edu'
 
 @celery.task
 def add(x, y):
@@ -22,12 +22,19 @@ def add(x, y):
 def check_ueb_request_process_status():
     source = 'uebpackage.tasks.check_ueb_request_process_status():'
     global service_host_address
-    service_request_api_url = '/api/CheckUEBPackageBuildStatus'
+    #service_request_api_url = '/api/CheckUEBPackageBuildStatus'
+    service_request_api_url = uebhelper.StringSettings.app_server_api_check_ueb_package_build_status
     connection = httplib.HTTPConnection(service_host_address)
-    request_resources_with_status_processing = _get_ueb_pkg_request_resources_by_processing_status('Processing')
+    job_status_processing = uebhelper.StringSettings.app_server_job_status_processing
+    request_resources_with_status_processing = _get_ueb_pkg_request_resources_by_processing_status(
+        job_status_processing)
+
     if len(request_resources_with_status_processing) == 0:
-        log.info(source + "No UEB model package build request has a status of 'Processing' at this time")
-        
+        log.info(source + "No UEB model package build request has a status of %s at this time" % job_status_processing)
+    else:
+        log.info(source + "Number of UEB model package build request with build status of %s at this time is:%s"
+                 % (job_status_processing, len(request_resources_with_status_processing)))
+
     for resource in request_resources_with_status_processing:
         pkg_process_job_id = resource['PackageProcessJobID']
         resource_id = resource['id']
@@ -53,12 +60,19 @@ def check_ueb_request_process_status():
 def check_ueb_run_status():
     source = 'uebpackage.tasks.check_ueb_run_status():'
     global service_host_address
-    service_request_api_url = '/api/CheckUEBRunStatus'
+    #service_request_api_url = '/api/CheckUEBRunStatus'
+    service_request_api_url = uebhelper.StringSettings.app_server_api_check_ueb_run_status_url
     connection = httplib.HTTPConnection(service_host_address)
-    model_pkg_resources_with_run_status_processing = _get_ueb_model_pkg_resources_by_processing_status('Processing')
+    job_status_processing = uebhelper.StringSettings.app_server_job_status_processing
+    model_pkg_resources_with_run_status_processing = _get_ueb_model_pkg_resources_by_processing_status(
+        job_status_processing)
+
     if len(model_pkg_resources_with_run_status_processing) == 0:
-        log.info(source + "No UEB model package has a run status of 'Processing' at this time")
-        
+        log.info(source + "No UEB model package has a run status of %s at this time" % job_status_processing)
+    else:
+        log.info(source + "Number of UEB model package with run status of %s at this time is:%s"
+                 % (job_status_processing, len(model_pkg_resources_with_run_status_processing)))
+
     for resource in model_pkg_resources_with_run_status_processing:
         pkg_process_job_id = resource['RunJobID']
         resource_id = resource['id']
@@ -78,19 +92,26 @@ def check_ueb_run_status():
         connection.close()
         
         # update the resource processing status
-        _update_ueb_model_pkg_run_status(resource_id, request_processing_status)        
+        _update_ueb_model_pkg_run_status(resource_id, request_processing_status)
+        log.info(source + 'UEB model package run status was updated to %s for '
+                          'model pkg resource ID:%s' % (resource_id, request_processing_status))
         
 @celery.task
 def retrieve_ueb_packages():
     source = 'uebpackage.tasks.retrieve_ueb_packages():'
     global service_host_address
-    service_request_api_url = '/api/GetUEBPackage'
+    #service_request_api_url = '/api/GetUEBPackage'
+    service_request_api_url = uebhelper.StringSettings.app_server_api_get_ueb_package_url
     connection = httplib.HTTPConnection(service_host_address)
-    request_resources_with_status_complete = _get_ueb_pkg_request_resources_by_processing_status('Complete')
+    job_status_complete = uebhelper.StringSettings.app_server_job_status_complete
+    request_resources_with_status_complete = _get_ueb_pkg_request_resources_by_processing_status(job_status_complete)
     
     if len(request_resources_with_status_complete) == 0:
-        log.info(source + "No UEB model package build request has a status of 'Complete' at this time")
-        
+        log.info(source + "No UEB model package build request has a status of %s at this time" % job_status_complete)
+    else:
+        log.info(source + "Number of UEB model package build request with build status of %s at this time is:%s"
+                 % (job_status_complete, len(request_resources_with_status_complete)))
+
     for resource in request_resources_with_status_complete:
         pkg_process_job_id = resource['PackageProcessJobID']
         resource_id = resource['id']
@@ -107,11 +128,7 @@ def retrieve_ueb_packages():
                                    'for PackageJobID:%s\nException:%s' % (pkg_process_job_id, e))
                 break
 
-            # update the resource processing status
-            request_processing_status = 'Package available'
-              
-            log.info(source + 'UEB model package build request status was '
-                              'updated to Package available for request resource ID:%s' % resource_id)
+            request_processing_status = uebhelper.StringSettings.app_server_job_status_package_available
         else:
             log.error(source + 'HTTP status %d returned from App server when retrieving '
                                'UEB model package for PackageJobID:'
@@ -119,8 +136,11 @@ def retrieve_ueb_packages():
             request_processing_status = 'Error'
         
         connection.close()
-        
-        _update_ueb_request_process_status(resource_id, request_processing_status) 
+
+        # update the resource processing status
+        _update_ueb_request_process_status(resource_id, request_processing_status)
+        log.info(source + 'UEB model package build request status was updated to %s for '
+                          'request resource ID:%s' % (resource_id, request_processing_status))
         
     return
 
@@ -128,12 +148,18 @@ def retrieve_ueb_packages():
 def retrieve_ueb_run_output_packages():
     source = 'uebpackage.tasks.retrieve_ueb_run_output_packages():'
     global service_host_address
-    service_request_api_url = '/api/UEBModelRunOutput'
-    connection =  httplib.HTTPConnection(service_host_address)
-    model_pkg_resources_with_run_status_complete = _get_ueb_model_pkg_resources_by_processing_status('Complete')
+    #service_request_api_url = '/api/UEBModelRunOutput'
+    service_request_api_url = uebhelper.StringSettings.app_server_api_get_ueb_run_output
+    connection = httplib.HTTPConnection(service_host_address)
+    job_status_complete = uebhelper.StringSettings.app_server_job_status_complete
+    model_pkg_resources_with_run_status_complete = _get_ueb_model_pkg_resources_by_processing_status(
+        job_status_complete)
     
     if len(model_pkg_resources_with_run_status_complete) == 0:
-        log.info(source + "No UEB model package has a run status of 'Complete' at this time.")
+        log.info(source + "No UEB model package has a run status of %s at this time." % job_status_complete)
+    else:
+        log.info(source + "Number of UEB model package with run status of %s at this time is:%s"
+                 % (job_status_complete, len(model_pkg_resources_with_run_status_complete)))
         
     for resource in model_pkg_resources_with_run_status_complete:
         pkg_process_job_id = resource['RunJobID']
@@ -146,18 +172,17 @@ def retrieve_ueb_run_output_packages():
             _save_ueb_output_package_as_resource(service_call_results, resource_id)   
             log.info(source + 'UEB model output package was received from App '
                               'server for RunJobID:%s' % pkg_process_job_id)
-            # update the resource processing status
             request_processing_status = 'Output package available'
-            
-            log.info(source + 'UEB model package run status was updated to Output '
-                              'package available for model package resource ID:%s' % resource_id)
         else:
             log.error(source + 'HTTP status %d returned from App server when '
                                'retrieving UEB model output package for '
                                'RunJobID:%s' % (service_call_results.status, pkg_process_job_id))
             request_processing_status = 'Error'
-        
-        _update_ueb_model_pkg_run_status(resource_id, request_processing_status)   
+
+        # update the resource processing status
+        _update_ueb_model_pkg_run_status(resource_id, request_processing_status)
+        log.info(source + 'UEB model package run status was updated to %s for model package resource ID:%s'
+                 % (request_processing_status, resource_id))
         connection.close()
         
     return
@@ -171,19 +196,20 @@ def _save_ueb_package_as_resource(service_call_results, pkg_request_resource_id)
            
     pkg_id = related_pkg_obj.id
     
-    ckan_default_dir = '/tmp/ckan'
+    ckan_default_dir = uebhelper.StringSettings.ckan_user_session_temp_dir  # '/tmp/ckan'
     # create a directory for saving the file
     # this will be a dir in the form of: /tmp/ckan/{random_id}
     random_id = base.model.types.make_uuid()
     destination_dir = os.path.join(ckan_default_dir, random_id)    
     os.makedirs(destination_dir)
-    
-    file = os.path.join(destination_dir, 'ueb_model_pkg.zip')
+
+    model_pkg_filename = uebhelper.StringSettings.ueb_input_model_package_default_filename   # 'ueb_model_pkg.zip'
+    model_pkg_file = os.path.join(destination_dir, model_pkg_filename)
     
     bytes_to_read = 16 * 1024
     
     try:
-        with open(file, 'wb') as file_obj:
+        with open(model_pkg_file, 'wb') as file_obj:
             while True:
                 data = service_call_results.read(bytes_to_read)
                 if not data:
@@ -199,7 +225,7 @@ def _save_ueb_package_as_resource(service_call_results, pkg_request_resource_id)
                       'package request resource ID: %s' % pkg_request_resource_id)
         
     # upload the file to CKAN file store
-    resource_metadata = _upload_file(file)
+    resource_metadata = _upload_file(model_pkg_file)
     if resource_metadata:
         log.info(source + 'UEB model package was uploaded for request resource ID:%s' % pkg_request_resource_id)  
     else:
@@ -208,13 +234,13 @@ def _save_ueb_package_as_resource(service_call_results, pkg_request_resource_id)
         return
     
     # retrieve some of the file meta data
-    resource_url = resource_metadata.get('_label') # this will return datetime stamp/filename
+    resource_url = resource_metadata.get('_label')  # this will return datetime stamp/filename
     
     resource_url = '/storage/f/' + resource_url  
     if resource_url.startswith('/'):
-        resource_url = base.config.get('ckan.site_url','').rstrip('/') + resource_url
+        resource_url = base.config.get('ckan.site_url', '').rstrip('/') + resource_url
     else:
-        resource_url = base.config.get('ckan.site_url','') + resource_url
+        resource_url = base.config.get('ckan.site_url', '') + resource_url
         
     resource_created_date = resource_metadata.get('_creation_date')
     resource_name = resource_metadata.get('filename_original')
@@ -222,7 +248,7 @@ def _save_ueb_package_as_resource(service_call_results, pkg_request_resource_id)
     
     # add the uploaded ueb model pkg data file as a resource to the dataset
     resource_create_action = tk.get_action('resource_create') 
-    context = {'model': base.model, 'session': base.model.Session, 'save': 'save' }
+    context = {'model': base.model, 'session': base.model.Session, 'save': 'save'}
     user = uebhelper.get_site_user()
     context['user'] = user.get('name')
     context['ignore_auth'] = True
@@ -280,14 +306,15 @@ def _save_ueb_output_package_as_resource(service_call_results, model_input_pkg_r
            
     pkg_id = related_pkg_obj.id
     
-    ckan_default_dir = '/tmp/ckan'
-    # create a directory for savig the file
+    #ckan_default_dir = '/tmp/ckan'
+    ckan_default_dir = uebhelper.StringSettings.ckan_user_session_temp_dir
+    # create a directory for saving the file
     # this will be a dir in the form of: /tmp/ckan/{random_id}
     random_id = base.model.types.make_uuid()
     destination_dir = os.path.join(ckan_default_dir, random_id)    
     os.makedirs(destination_dir)
-    
-    ueb_output_pkg_file = os.path.join(destination_dir, 'ueb_model_output_pkg.zip')
+    ueb_output_pkg_filename = uebhelper.StringSettings.ueb_output_model_package_default_filename
+    ueb_output_pkg_file = os.path.join(destination_dir, ueb_output_pkg_filename)
     
     bytes_to_read = 16 * 1024
     
@@ -303,7 +330,7 @@ def _save_ueb_output_package_as_resource(service_call_results, model_input_pkg_r
                            'temporary location for package request resource ID: %s \n '
                            'Exception: %s' % (model_input_pkg_resource_id, e))
         pass
-        return
+        return  # no need to show error to the user as this a background operation
     
     log.info(source + 'ueb model output package zip file was saved to temporary location '
                       'for package request resource ID: %s' % model_input_pkg_resource_id)
@@ -316,15 +343,15 @@ def _save_ueb_output_package_as_resource(service_call_results, model_input_pkg_r
     else:
         log.error(source + 'Failed to upload ueb model output package zip file '
                            'as a resource for model input package resource ID: %s' % model_input_pkg_resource_id)
-        return
+        return  # no need to show error to the user as this a background operation
     
     # retrieve some of the file meta data
     resource_url = resource_metadata.get('_label')  # this will return datetime stamp/filename
     resource_url = '/storage/f/' + resource_url  
     if resource_url.startswith('/'):
-        resource_url = base.config.get('ckan.site_url','').rstrip('/') + resource_url
+        resource_url = base.config.get('ckan.site_url', '').rstrip('/') + resource_url
     else:
-        resource_url = base.config.get('ckan.site_url','') + resource_url
+        resource_url = base.config.get('ckan.site_url', '') + resource_url
         
     resource_created_date = resource_metadata.get('_creation_date')
     resource_name = resource_metadata.get('filename_original')
@@ -341,7 +368,7 @@ def _save_ueb_output_package_as_resource(service_call_results, model_input_pkg_r
     #A value for key 'message" in the context must be set to 
     # avoid a bug in line#192 of the update.py under lib/action
     # without this, a TypeError will occur (TypeError:No object(name:translator) has been registered for this thread)
-    context['message'] =  'Auto uploaded model output package ' 
+    context['message'] = 'Auto uploaded model output package '
     
     data_dict = {
                 "package_id": pkg_id,  # id of the package/dataset to which the resource needs to be added
@@ -363,7 +390,7 @@ def _save_ueb_output_package_as_resource(service_call_results, model_input_pkg_r
     except Exception as e:
         log.error(source + 'Failed to add UEB model output package as a resource '
                            'for model input package resource ID:%s \n Exception: %s' % (model_input_pkg_resource_id, e))
-        pass
+        pass    # no need to show error to the user as this a background operation
     
     if is_resource_add_success:
         # update the related dataset
@@ -378,7 +405,7 @@ def _save_ueb_output_package_as_resource(service_call_results, model_input_pkg_r
             log.error(source + 'Failed to update UEB model package dataset after receiving '
                                'model output package for model input package resource ID:%s \n '
                                'Exception: %s' % (model_input_pkg_resource_id, e))
-            pass
+            pass    # no need to show error to the user as this a background operation
     return
 
 
@@ -393,7 +420,7 @@ def _upload_file(file_path):
     # in storage.py    
     bucket_id = base.config.get('ckan.storage.bucket', 'default')    
     ts = datetime.now().isoformat().split(".")[0]  # '2010-07-08T19:56:47'    
-    file_name  = os.path.basename(file_path).replace(' ', '-') # ueb request.txt -> ueb-request.txt
+    file_name = os.path.basename(file_path).replace(' ', '-') # ueb request.txt -> ueb-request.txt
     file_key = os.path.join(ts, file_name) 
     label = file_key
     params = {'filename_original': os.path.basename(file_path), 'key': file_key}
@@ -445,7 +472,7 @@ def _get_ueb_pkg_request_resources_by_processing_status(status):
     
     ueb_pkg_active_requests = []
     for file_resource in matching_resources:        
-        # filterout any deleted resources        
+        # filter out any deleted resources
         active_resource = uebhelper.get_resource(file_resource['id'])
         if not active_resource:
             continue   
@@ -471,7 +498,7 @@ def _get_ueb_model_pkg_resources_by_processing_status(status):
     
     ueb_pkg_active_requests = []
     for file_resource in matching_resources:        
-        # filterout any deleted resources        
+        # filter out any deleted resources
         active_resource = uebhelper.get_resource(file_resource['id'])
         if not active_resource:
             continue   

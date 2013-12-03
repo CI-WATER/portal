@@ -22,30 +22,49 @@ class MockTranslator(object):
         return singular
 
 
+class StringSettings(object):
+    ckan_user_session_temp_dir = '/tmp/ckan'
+    ueb_request_json_file_name = 'ueb_pkg_request.json'
+    ueb_request_text_resource_file_name = 'ueb_pkg_request.txt'
+    ueb_request_zip_file_name = 'ueb_request.zip'
+    ueb_input_model_package_default_filename = 'ueb_model_pkg.zip'
+    ueb_output_model_package_default_filename = 'ueb_model_output_pkg.zip'
+    app_server_host_address = 'thredds-ci-water.bluezone.usu.edu'
+    app_server_api_generate_ueb_package_url = '/api/GenerateUEBPackage'
+    app_server_api_check_ueb_package_build_status = '/api/CheckUEBPackageBuildStatus'
+    app_server_api_check_ueb_run_status_url = '/api/CheckUEBRunStatus'
+    app_server_api_get_ueb_package_url = '/api/GetUEBPackage'
+    app_server_api_run_ueb_url = '/api/RunUEB'
+    app_server_api_get_ueb_run_output = '/api/UEBModelRunOutput'
+    app_server_job_status_complete = 'Complete'
+    app_server_job_status_processing = 'Processing'
+    app_server_job_status_package_available = 'Package available'
+
+
 def _register_translator():
     from paste.registry import Registry
     import pylons
-    registry=Registry()        
+    registry = Registry()
     registry.prepare()
     translator_obj = MockTranslator()
     registry.register(pylons.translator, translator_obj)
 
     
 def update_resource(resource_id, data_dict, update_message=None, backgroundTask=False):
-    '''
+    """
     Updates a resource identified by resource_id
     with fields and corresponding values found in the data_dict
     Note: if key is not a field of the resource table in the data_dict
     that key/value pair will be added/updated to the 'extras' field of the resource
-    
+
     param resource_id: id of the resource that needs update
-    param data_dict: a dict object containing resource table field names 
+    param data_dict: a dict object containing resource table field names
     as keys with corresponding values to be used for the update
     param update_message: message to be set for key 'message' in the context dict obj
-    #A value for key 'message" in the context must be set to 
+    #A value for key 'message" in the context must be set to
     # avoid a bug in line#192 of the update.py under lib/action
     # without this, a TypeError will occur (TypeError:No object(name:translator) has been registered for this thread)
-    '''
+    """
     # TODO: this function needs throw exception if updating resource fails
     source = 'uebpackage.helpers.update_resource():'
     if backgroundTask:
@@ -70,7 +89,6 @@ def update_resource(resource_id, data_dict, update_message=None, backgroundTask=
         user = get_site_user()
         context['user'] = user.get('name')
         context['ignore_auth'] = True
-        pass
     
     for key, value in data_dict.items():
         matching_resource[key] = value
@@ -80,7 +98,6 @@ def update_resource(resource_id, data_dict, update_message=None, backgroundTask=
     except Exception as e:
         log.error(source + 'Failed to update resource for resource ID: %s \nException %s' % (resource_id, e))
         updated_resource = None
-        pass
             
     return updated_resource
 
