@@ -1,6 +1,7 @@
 import ckan.lib.base as base
 import ckan.plugins as p
 import logging
+import ckan.lib.dictization.model_dictize as model_dictize
 from ckan.controllers import storage
 
 
@@ -159,15 +160,30 @@ def get_package(pkg_id_or_name):
     context = {'model': base.model, 'session': base.model.Session}
     
     # get the resource that has the id equal to the given resource id or name
-    data_dict = {'id': pkg_id_or_name }
+    data_dict = {'id': pkg_id_or_name}
     try:
         matching_package_with_resources = package_show_action(context, data_dict)  
-    except tk.ObjectNotFound: #dataset does not exist or has been deleted
+    except tk.ObjectNotFound:  # dataset does not exist or has been deleted
         log.error(source + 'No dataset was found for dataset ID: %s' % pkg_id_or_name)
         matching_package_with_resources = None
         pass
     
     return matching_package_with_resources
+
+
+def get_package_for_resource(resource_id):
+    context = {'model': base.model, 'session': base.model.Session}
+    # get the matching resource object first
+    resource_obj = base.model.Resource.get(resource_id)
+
+    # get the package object that has the above resource
+    related_pkg_obj = resource_obj.resource_group.package
+
+    # convert the package object to dict
+    package_dict = model_dictize.package_dictize(related_pkg_obj, context)
+
+    return package_dict
+
 
 def get_resource(resource_id):
     source = 'uebpackage.helpers.get_resource():'
@@ -185,23 +201,25 @@ def get_resource(resource_id):
     
     return matching_resource
 
+
 def get_site_user():
-    '''
+    """
     Gets the default user that has admin lavel priviledges. User name for this
     default user comes from the CKAN ini file. This default user is used for
     authenticate backgound tasks that run outside the user session.
-    '''
+    """
     user = tk.get_action('get_site_user')(
             {'model': base.model, 'ignore_auth': True, 'defer_commit': True}, {}
             )
     return user
 
+
 def retrieve_file_object_from_file_store(file_filestore_path): 
-    '''
+    """
     returns a file obj (in read mode) for the provided file in the ckan file store
     which the caller then can use to read the contents of the file (file_obj.read())
     param file_filestore_path : filecreationdatetime/followed by the filename
-    '''
+    """
     bucket_id = base.config.get('ckan.storage.bucket', 'default')   
     ofs = storage.get_ofs()
     file_obj = ofs.get_stream(bucket_id, file_filestore_path) 

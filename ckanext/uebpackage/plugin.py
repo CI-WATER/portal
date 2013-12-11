@@ -65,7 +65,7 @@ def uebpackage_build_main_navigation(*args):
     # show ciwater related menu options only if the user is loggedin
     if c.user:        
         link_pkg = h.url_for(controller='ckanext.uebpackage.controllers.packagecreate:PackagecreateController', action='packagecreateform')
-        link_run = h.url_for(controller = 'ckanext.uebpackage.controllers.uebexecute:UEBexecuteController', action='select_model_package')
+        link_run = h.url_for(controller='ckanext.uebpackage.controllers.uebexecute:UEBexecuteController', action='select_model_package')
         if p.toolkit.c.action == 'packagecreateform' or p.toolkit.c.action == 'select_model_package':
             menu = h.literal('<li class="dropdown">')
         else:

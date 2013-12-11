@@ -18,14 +18,9 @@ log = logging.getLogger('ckan.logic')
 class PackagecreateController(base.BaseController):
         
     def packagecreateform(self):        
+
         tk.c.form_stage = 'stage_1'
         _set_context_to_shape_file_resources()
-        # TODO: uncomment these 2 lines
-        # to implement listing files with .dat extension
-        # and .nc in dropdown boxes for respective
-        # file selection
-        #tk.c.ueb_dat_files = _set_context_to_file_resources('.dat')
-        #tk.c.ueb_nc_files = _set_context_to_file_resources('.nc')
 
         # set default values for stage_1
         errors = {}
@@ -50,6 +45,13 @@ class PackagecreateController(base.BaseController):
             if form_vars['error_summary']:
                 if form_stage == 'stage_1':
                     _set_context_to_shape_file_resources()
+
+                if form_stage in ['stage_2', 'stage_8', 'stage_9']:
+                    tk.c.ueb_dat_files = _set_context_to_file_resources('dat')
+
+                if form_stage in ['stage_3', 'stage_4', 'stage_5', 'stage_6', 'stage_8']:
+                    tk.c.ueb_nc_files = _set_context_to_file_resources('nc')
+
                 return tk.render('packagecreateform.html', extra_vars=form_vars)
         
         session = base.session
@@ -114,27 +116,35 @@ class PackagecreateController(base.BaseController):
             stages = ['active', 'inactive', 'inactive', 'inactive', 'inactive', 'inactive', 'inactive', 'inactive',
                       'inactive']
         elif form_stage_number == 2:
+            tk.c.ueb_dat_files = _set_context_to_file_resources('dat')
             stages = ['inactive', 'active', 'inactive', 'inactive', 'inactive', 'inactive', 'inactive', 'inactive',
                       'inactive']
         elif form_stage_number == 3:
+            tk.c.ueb_nc_files = _set_context_to_file_resources('nc')
             stages = ['inactive', 'inactive', 'active', 'inactive', 'inactive', 'inactive', 'inactive', 'inactive',
                       'inactive']
         elif form_stage_number == 4:
+            tk.c.ueb_nc_files = _set_context_to_file_resources('nc')
             stages = ['inactive', 'inactive', 'inactive', 'active', 'inactive', 'inactive', 'inactive', 'inactive',
                       'inactive']
         elif form_stage_number == 5:
+            tk.c.ueb_nc_files = _set_context_to_file_resources('nc')
             stages = ['inactive', 'inactive', 'inactive', 'inactive', 'active', 'inactive', 'inactive', 'inactive',
                       'inactive']
         elif form_stage_number == 6:
+            tk.c.ueb_nc_files = _set_context_to_file_resources('nc')
             stages = ['inactive', 'inactive', 'inactive', 'inactive', 'inactive', 'active', 'inactive', 'inactive',
                       'inactive']
         elif form_stage_number == 7:
             stages = ['inactive', 'inactive', 'inactive', 'inactive', 'inactive', 'inactive', 'active', 'inactive',
                       'inactive']
         elif form_stage_number == 8:
-            stages = ['inactive', 'inactive', 'inactive', 'inactive', 'inactive', 'inactive', 'iactive', 'active',
+            tk.c.ueb_dat_files = _set_context_to_file_resources('dat')
+            tk.c.ueb_nc_files = _set_context_to_file_resources('nc')
+            stages = ['inactive', 'inactive', 'inactive', 'inactive', 'inactive', 'inactive', 'inactive', 'active',
                       'inactive']
         else:
+            tk.c.ueb_dat_files = _set_context_to_file_resources('dat')
             stages = ['inactive', 'inactive', 'inactive', 'inactive', 'inactive', 'inactive', 'inactive', 'inactive',
                       'active']
             
@@ -173,7 +183,7 @@ def _send_request_to_app_server(request_zip_file):
         file_data = file_obj.read()    
         request_body_content = file_data
     
-    # call the service
+    # call the service TODO: see if we can pass the open file object as request_body_content
     connection.request('POST', service_request_url, request_body_content, headers)
     
     # retrieve response
@@ -268,7 +278,7 @@ def _create_ueb_pkg_build_request_zip_file(ueb_pkg_request_in_json, selected_fil
     """
     Creates a zip file containing all the files the user selected in configuring
     ueb model as well as the text file in the form of a json string that contains
-    all the parameters and thier values selected.
+    all the parameters and their values selected.
 
     param ueb_pkg_request_in_json: json string that contains user package build request details
     param: selected_file_ids a dict in which each value is a file id
@@ -344,13 +354,23 @@ def _set_context_to_shape_file_resources():
     
     # for each resource we need only the id (id be used as the selection value) and the name for display
     file_resources = []
+    resource = {'id': 0, 'name': 'Select a shape file ..'}
+    file_resources.append(resource)
     for file_resource in shape_file_resources:
         resource = {}
-        # filterout any deleted resources        
+        # filter out any deleted resources
         active_resource = _get_resource(file_resource['id'])
         if not active_resource:
             continue            
-        
+
+        # check if the shape file belongs to the current user, otherwise skip
+        # get the matching resource object and then get the id of the related package
+        resource_obj = base.model.Resource.get(file_resource['id'])
+        related_pkg_obj = resource_obj.resource_group.package
+        if related_pkg_obj.author:
+            if related_pkg_obj.author != tk.c.user:
+                continue
+
         resource['id'] = file_resource['id']
         resource['name'] = file_resource['name']
         file_resources.append(resource) 
@@ -359,29 +379,44 @@ def _set_context_to_shape_file_resources():
 
 
 def _set_context_to_file_resources(file_extension):
-    '''
+    """
     This will create a list of all files that has
-    extension of file_extension
-    '''
+    extension of file_extension and return the matching list of
+    resources
+    """
     # note: resource_search returns a list of matching resources
     # that can include any deleted resources
     resource_search_action = tk.get_action('resource_search')
     context = {'model': base.model, 'session': base.model.Session,
                'user': tk.c.user or tk.c.author, 'for_view': True}
 
-    # get the resource that has the format field set to zip and resource metaddata in the extras column has ResourceType
-    # as "Shape File" and the resource_type is file.upload
-    data_dict = {'query': ['format:' + file_extension, 'resource_type:file.upload']}
+    # get the resource that has the format field set to file_extension
+    # and resource_type to file.upload
+    #data_dict = {'query': ['format:' + file_extension, 'resource_type:file.upload']}
+    data_dict = {'query': ['format:' + file_extension]}
     shape_file_resources = resource_search_action(context, data_dict)['results']
 
     # for each resource we need only the id (id be used as the selection value) and the name for display
     file_resources = []
+    resource = {'id': 0, 'name': 'Select a file ..'}
+    file_resources.append(resource)
     for file_resource in shape_file_resources:
         resource = {}
-        # filterout any deleted resources
+        # filter out any deleted resources
         active_resource = _get_resource(file_resource['id'])
         if not active_resource:
             continue
+        # filter out any resources that has resource_type as file.link
+        if file_resource['resource_type'] == 'file.link':
+            continue
+
+        # check if the file resource belongs to the current user, otherwise skip
+        # get the matching file resource object and then get the id of the related package
+        resource_obj = base.model.Resource.get(file_resource['id'])
+        related_pkg_obj = resource_obj.resource_group.package
+        if related_pkg_obj.author:
+            if related_pkg_obj.author != tk.c.user:
+                continue
 
         resource['id'] = file_resource['id']
         resource['name'] = file_resource['name']
@@ -401,12 +436,12 @@ def _get_file_id_from_file_name(package_id, filename):
                'user': tk.c.user or tk.c.author}
     
     # get the dataset/package that has the id equal to the given dtatset/package name (note: name is unique in package table)
-    data_dict = {'id': package_id }
+    data_dict = {'id': package_id}
     matching_package_with_resources = package_show_action(context, data_dict)
     files = matching_package_with_resources['resources']
-    for file in files:
-        if file['name'] == filename:
-            return file['id']
+    for r_file in files:
+        if r_file['name'] == filename:
+            return r_file['id']
     
     return '' 
 
@@ -429,11 +464,11 @@ def _get_resource(resource_id):
                'user': tk.c.user or tk.c.author}
     
     # get the resource that has the id equal to the given resource id
-    data_dict = {'id': resource_id }
+    data_dict = {'id': resource_id}
     matching_resource = None
     
     # if the resource does not exist or it is a deleted resource
-    # resource_show atction will throw ObjectNotFound exception
+    # resource_show action will throw ObjectNotFound exception
     try:
         matching_resource = resource_show_action(context, data_dict)
     except tk.ObjectNotFound:
@@ -443,10 +478,10 @@ def _get_resource(resource_id):
 
 
 def _get_ueb_pkg_request_resources_pending_processing():    
-    '''
+    """
     Returns a list of package request resources that are currently
     have status set to 'Processing'
-    '''
+    """
     resource_search_action = tk.get_action('resource_search')
     context = {'model': base.model, 'session': base.model.Session,
                'user': tk.c.user or tk.c.author}
@@ -495,8 +530,7 @@ def _validate_stage_one():
     data = {}
     error_summary = {}
     stages = []
-    form_vars = {'data': data, 'errors': errors, 'error_summary':error_summary, 'stages':stages}
-    form_stage_number = 1
+    form_vars = {'data': data, 'errors': errors, 'error_summary':error_summary, 'stages': stages}
     form_stage = 'stage_1'
     pkgname = tk.request.params['pkgname']  
     pkgdescription = tk.request.params['pkgdescription'] 
@@ -545,18 +579,30 @@ def _validate_stage_one():
               ]
     
     if domainfiletypeoption == 'polygon':
+        if data['domainshapefile'] == '0':
+            data['domainshapefile'] = None
+
         actions.append(lambda: not_empty_check('domainshapefile', data, errors, context))
     else:
+        errors['domainnetcdfile'].append('Use of netCDF file for domain not yet implemented.')
+
+        # TODO: the following 3 lines need to be uncommented when domain netcdf file use is implemented
+        # at the app server
+        '''
         actions.append(lambda: not_empty_check('domainnetcdfile', data, errors, context))
         actions.append(lambda: not_empty_check('domainnetcdffileformat', data, errors, context))
-    
+
+        # check if the file selected as domain netcdf file has already been selected for any other input
+        _validate_file_selection(data, errors, 'domainnetcdffile', 'domain netCDF')
+        '''
+
     for action in actions:
         try:
             action()
         except:
             pass
-    
-    # Check for data type numbers
+
+    # Check for numeric data type
     try:
         int(buffersize)
     except ValueError:
@@ -604,7 +650,7 @@ def _validate_stage_two():
     data = {}
     error_summary = {}
     stages = []
-    form_vars = {'data': data, 'errors': errors, 'error_summary':error_summary, 'stages':stages}
+    form_vars = {'data': data, 'errors': errors, 'error_summary': error_summary, 'stages': stages}
     form_stage = 'stage_2' 
     parametersfileoption = tk.request.params['parametersfileoption']  
     parametersfile = tk.request.params['parametersfile']  
@@ -621,16 +667,23 @@ def _validate_stage_two():
     not_empty_check = tk.get_validator('not_empty')   # not_empty(key, data, errors, context):
            
     if parametersfileoption == 'No':
+        if data['parametersfile'] == '0':
+            data['parametersfile'] = None
         try:
             not_empty_check('parametersfile', data, errors, context)
         except:
            pass
-       
+
+        # check if the file selected as parameters file has already been selected for any other input
+        _validate_file_selection(data, errors, 'parametersfile', 'parameters')
+    else:
+        data['parametersfile'] = None
+
     for key in errors:
         # Get the error message for the form field (key)
         value = errors.get(key)            
-        if value: # error message exists
-           error_summary[key] = value        
+        if value:  # error message exists
+            error_summary[key] = value
     
     tk.c.form_stage = form_stage 
     stages = ['inactive', 'active', 'inactive', 'inactive', 'inactive', 'inactive', 'inactive', 'inactive', 'inactive']
@@ -693,38 +746,68 @@ def _validate_stage_three():
         errors[key] = []
      
     context = {}   
-    if form_stage not in session:
-        session[form_stage] = {}
-         
-    session[form_stage] = data    
-    session.save()
-    
+
     not_empty_check = tk.get_validator('not_empty') 
     actions = []
     if usicoption == 'Constant':
         actions.append(lambda: not_empty_check('usic', data, errors, context))
+        data['usicgridfile'] = None
     else:
+        if data['usicgridfile'] == '0':  # value is 0 for option "Select a file ..'
+            data['usicgridfile'] = None
+
         actions.append(lambda: not_empty_check('usicgridfile', data, errors, context))
         actions.append(lambda: not_empty_check('usicgridfileformat', data, errors, context))
 
+        # check if the file selected as energy content file has already been selected for any other input
+        actions.append(lambda: _validate_file_selection(data, errors, 'usicgridfile', 'energy content'))
+
     if wsisoption == 'Constant':
         actions.append(lambda: not_empty_check('wsis', data, errors, context))
+        data['wsisgridfile'] = None
     else:
+        if data['wsisgridfile'] == '0':
+            data['wsisgridfile'] = None
+
         actions.append(lambda: not_empty_check('wsisgridfile', data, errors, context))
         actions.append(lambda: not_empty_check('wsisgridfileformat', data, errors, context))
 
+        # check if the file selected as water equivalent file has already been selected for any other input
+        actions.append(lambda: _validate_file_selection(data, errors, 'wsisgridfile', 'water equivalent'))
+
     if ticoption == 'Constant':
         actions.append(lambda: not_empty_check('tic', data, errors, context))
+        data['ticgridfile'] = None
     else:
+        if data['ticgridfile'] == '0':
+            data['ticgridfile'] = None
+
         actions.append(lambda: not_empty_check('ticgridfile', data, errors, context))
         actions.append(lambda: not_empty_check('ticgridfileformat', data, errors, context))
 
+        # check if the file selected as snow surface dimensionless age file has already been selected
+        # for any other input
+        actions.append(lambda: _validate_file_selection(data, errors, 'ticgridfile', 'snow surface dimensionless age'))
+
     if wcicoption == 'Constant':
         actions.append(lambda: not_empty_check('wcic', data, errors, context))
+        data['wcicgridfile'] = None
     else:
+        if data['wcicgridfile'] == '0':
+            data['wcicgridfile'] = None
+
         actions.append(lambda: not_empty_check('wcicgridfile', data, errors, context))
         actions.append(lambda: not_empty_check('wcicgridfileformat', data, errors, context))
-       
+
+        # check if the file selected as canopy snow water equivalent file has already been selected for any other input
+        actions.append(lambda: _validate_file_selection(data, errors, 'wcicgridfile', 'snow water equivalent'))
+
+    if form_stage not in session:
+        session[form_stage] = {}
+
+    session[form_stage] = data
+    session.save()
+
     for action in actions:
         try:
             action()
@@ -830,56 +913,113 @@ def _validate_stage_four():
         errors[key] = []
     
     context = {}   
-    if form_stage not in session:
-        session[form_stage] = {}
-         
-    session[form_stage] = data    
-    session.save()
-    
+
     not_empty_check = tk.get_validator('not_empty') 
     actions = []
     if dfoption == 'Constant':
-        actions.append(lambda: not_empty_check('df', data, errors, context))        
+        actions.append(lambda: not_empty_check('df', data, errors, context))
+        data['dfgridfile'] = None
     else:
+        if data['dfgridfile'] == '0':  # value 0 if no file selected - Select a file...
+            data['dfgridfile'] = None
+
         actions.append(lambda: not_empty_check('dfgridfile', data, errors, context))
         actions.append(lambda: not_empty_check('dfgridfileformat', data, errors, context))
+
+        # check if the file selected as drift factor file has already been selected for any other input
+        actions.append(lambda: _validate_file_selection(data, errors, 'dfgridfile', 'drift factor'))
         
     if aepoption == 'Constant':
-        actions.append(lambda: not_empty_check('aep', data, errors, context))        
+        actions.append(lambda: not_empty_check('aep', data, errors, context))
+        data['aepgridfile'] = None
     else:
+        if data['aepgridfile'] == '0':
+            data['aepgridfile'] = None
+
         actions.append(lambda: not_empty_check('aepgridfile', data, errors, context))
         actions.append(lambda: not_empty_check('aepgridfileformat', data, errors, context))
+
+        # check if the file selected as albedo extinction coefficient file has already been selected for any other input
+        actions.append(lambda: _validate_file_selection(data, errors, 'aepgridfile', 'albedo extinction coefficient'))
                
     if sbaroption == 'Constant':
-        actions.append(lambda: not_empty_check('sbar', data, errors, context))       
+        actions.append(lambda: not_empty_check('sbar', data, errors, context))
+        data['sbargridfile'] = None
     else:
+        if data['sbargridfile'] == '0':
+            data['sbargridfile'] = None
+
         actions.append(lambda: not_empty_check('sbargridfile', data, errors, context))
         actions.append(lambda: not_empty_check('sbargridfileformat', data, errors, context))
+
+        # check if the file selected as maximum snow load held per branch area file has already been
+        # selected for any other input
+        actions.append(lambda: _validate_file_selection(data, errors, 'sbargridfile',
+                                                        'maximum snow load held per branch area'))
             
     if subalboption == 'Constant':
-        actions.append(lambda: not_empty_check('subalb', data, errors, context))        
+        actions.append(lambda: not_empty_check('subalb', data, errors, context))
+        data['subalbgridfile'] = None
     else:
+        if data['subalbgridfile'] == '0':
+            data['subalbgridfile'] = None
+
         actions.append(lambda: not_empty_check('subalbgridfile', data, errors, context))
         actions.append(lambda: not_empty_check('subalbgridfileformat', data, errors, context))
+
+        # check if the file selected as albedo of the substrate beneath the snow file has already been
+        # selected for any other input
+        actions.append(lambda: _validate_file_selection(data, errors, 'subalbgridfile',
+                                                        'albedo of the substrate beneath the snow'))
                   
     if subtypeoption == 'Constant':
-        actions.append(lambda: not_empty_check('subtype', data, errors, context))        
+        actions.append(lambda: not_empty_check('subtype', data, errors, context))
+        data['subtypegridfile'] = None
     else:
+        if data['subtypegridfile'] == '0':
+            data['subtypegridfile'] = None
+
         actions.append(lambda: not_empty_check('subtypegridfile', data, errors, context)) 
-        actions.append(lambda: not_empty_check('subtypegridfileformat', data, errors, context))   
+        actions.append(lambda: not_empty_check('subtypegridfileformat', data, errors, context))
+
+        # check if the file selected as type of beneath snow substrate encoded file has already been selected
+        # for any other input
+        actions.append(lambda: _validate_file_selection(data, errors, 'subtypegridfile',
+                                                        'type of beneath snow substrate encoded'))
         
     if gsurfoption == 'Constant':
         actions.append(lambda: not_empty_check('gsurf', data, errors, context))
+        data['gsurfgridfile'] = None
     else:
+        if data['gsurfgridfile'] == '0':
+            data['gsurfgridfile'] = None
+
         actions.append(lambda: not_empty_check('gsurfgridfile', data, errors, context))   
         actions.append(lambda: not_empty_check('gsurfgridfileformat', data, errors, context))
+
+        # check if the file selected as fraction of surface snow melt file has already been selected for any other input
+        actions.append(lambda: _validate_file_selection(data, errors, 'gsurfgridfile', 'fraction of surface snow melt'))
        
     if tslastoption == 'Constant':
-        actions.append(lambda: not_empty_check('ts_last', data, errors, context))        
+        actions.append(lambda: not_empty_check('ts_last', data, errors, context))
+        data['ts_lastgridfile'] = None
     else:
+        if data['ts_lastgridfile'] == '0':
+            data['ts_lastgridfile'] = None
+
         actions.append(lambda: not_empty_check('ts_lastgridfile', data, errors, context))
         actions.append(lambda: not_empty_check('ts_lastgridfileformat', data, errors, context))
-    
+
+        # check if the file selected as snow surface temp prior to one day of simulation start day file
+        # has already been selected for any other input
+        actions.append(lambda: _validate_file_selection(data, errors, 'ts_lastgridfile', 'snow surface temperature'))
+
+    if form_stage not in session:
+        session[form_stage] = {}
+
+    session[form_stage] = data
+    session.save()
+
     for action in actions:
         try:
             action()
@@ -891,8 +1031,8 @@ def _validate_stage_four():
         value = errors.get(key)            
         if value: # error message exists
             error_summary[key] = value
-    
-    tk.c.form_stage = form_stage 
+
+    tk.c.form_stage = form_stage
     stages = ['inactive', 'inactive', 'inactive', 'active', 'inactive', 'inactive', 'inactive', 'inactive', 'inactive']
     form_vars['data'] = data
     form_vars['stages'] = stages
@@ -954,38 +1094,80 @@ def _validate_stage_five():
         errors[key] = []
         
     context = {}   
-    if form_stage not in session:
-        session[form_stage] = {}
-         
-    session[form_stage] = data    
-    session.save()
-          
+
     not_empty_check = tk.get_validator('not_empty') 
     actions = []
-    if ccoption == 'Constant':
-        actions.append(lambda: not_empty_check('cc', data, errors, context))        
+
+    if ccoption == 'NLCD':
+        data['ccgridfile'] = None
+    elif ccoption == 'Constant':
+        actions.append(lambda: not_empty_check('cc', data, errors, context))
+        data['ccgridfile'] = None
     elif ccoption == 'Grid':
+        if data['ccgridfile'] == '0':  # value 0 if no file selected - Select a file...
+            data['ccgridfile'] = None
+
         actions.append(lambda: not_empty_check('ccgridfile', data, errors, context))
         actions.append(lambda: not_empty_check('ccgridfileformat', data, errors, context))
-        
-    if hcanoption == 'Constant':
-        actions.append(lambda: not_empty_check('hcan', data, errors, context))        
+
+        # check if the file selected as canopy coverage file
+        # has already been selected for any other input
+        actions.append(lambda: _validate_file_selection(data, errors, 'ccgridfile', 'canopy coverage'))
+
+    if hcanoption == 'NLCD':
+        data['hcangridfile'] = None
+    elif hcanoption == 'Constant':
+        actions.append(lambda: not_empty_check('hcan', data, errors, context))
+        data['hcangridfile'] = None
     elif hcanoption == 'Grid':
+        if data['hcangridfile'] == '0':
+            data['hcangridfile'] = None
+
         actions.append(lambda: not_empty_check('hcangridfile', data, errors, context))
         actions.append(lambda: not_empty_check('hcangridfileformat', data, errors, context))
-    
-    if laioption == 'Constant':
-        actions.append(lambda: not_empty_check('lai', data, errors, context))        
+
+        # check if the file selected for canopy height
+        # has already been selected for any other input
+        actions.append(lambda: _validate_file_selection(data, errors, 'hcangridfile', 'canopy height'))
+
+    if laioption == 'NLCD':
+        data['laigridfile'] = None
+    elif laioption == 'Constant':
+        actions.append(lambda: not_empty_check('lai', data, errors, context))
+        data['laigridfile'] = None
     elif laioption == 'Grid':
+        if data['laigridfile'] == '0':
+            data['laigridfile'] = None
+
         actions.append(lambda: not_empty_check('laigridfile', data, errors, context))
         actions.append(lambda: not_empty_check('laigridfileformat', data, errors, context))    
-    
-    if ycageoption == 'Constant':
-        actions.append(lambda: not_empty_check('ycage', data, errors, context))        
-    elif ccoption == 'Grid':
+
+        # check if the file selected for leaf area index
+        # has already been selected for any other input
+        actions.append(lambda: _validate_file_selection(data, errors, 'laigridfile', 'leaf area index'))
+
+    if ycageoption == 'NLCD':
+        data['ycagegridfile'] = None
+    elif ycageoption == 'Constant':
+        actions.append(lambda: not_empty_check('ycage', data, errors, context))
+        data['ycagegridfile'] = None
+    elif ycageoption == 'Grid':
+        if data['ycagegridfile'] == '0':
+            data['ycagegridfile'] = None
+
         actions.append(lambda: not_empty_check('ycagegridfile', data, errors, context))
         actions.append(lambda: not_empty_check('ycagegridfileformat', data, errors, context))
-        
+
+        # check if the file selected for forest age flag
+        # has already been selected for any other input
+        actions.append(lambda: _validate_file_selection(data, errors, 'ycagegridfile', 'forest age flag'))
+
+    if form_stage not in session:
+        session[form_stage] = {}
+
+    session[form_stage] = data
+    session.save()
+
     for action in actions:
         try:
             action()
@@ -1070,44 +1252,96 @@ def _validate_stage_six():
         errors[key] = []
         
     context = {}   
-    if form_stage not in session:
-        session[form_stage] = {}
-         
-    session[form_stage] = data    
-    session.save()
-          
+
     not_empty_check = tk.get_validator('not_empty') 
     actions = []
-    if aproption == 'Constant':
-        actions.append(lambda: not_empty_check('apr', data, errors, context))        
+
+    if aproption == 'Compute':
+        data['aprgridfile'] = None
+    elif aproption == 'Constant':
+        actions.append(lambda: not_empty_check('apr', data, errors, context))
+        data['aprgridfile'] = None
     elif aproption == 'Grid':
+        if data['aprgridfile'] == '0':  # value 0 if no file selected - Select a file...
+            data['aprgridfile'] = None
+
         actions.append(lambda: not_empty_check('aprgridfile', data, errors, context))
         actions.append(lambda: not_empty_check('aprgridfileformat', data, errors, context))
-        
-    if slopeoption == 'Constant':
-        actions.append(lambda: not_empty_check('slope', data, errors, context))        
+
+        # check if the file selected for average atmospheric pressure
+        # has already been selected for any other input
+        actions.append(lambda: _validate_file_selection(data, errors, 'aprgridfile', 'average atmospheric'))
+
+    if slopeoption == 'Compute':
+        data['slopegridfile'] = None
+    elif slopeoption == 'Constant':
+        actions.append(lambda: not_empty_check('slope', data, errors, context))
+        data['slopegridfile'] = None
     elif slopeoption == 'Grid':
+        if data['slopegridfile'] == '0':
+            data['slopegridfile'] = None
+
         actions.append(lambda: not_empty_check('slopegridfile', data, errors, context))
         actions.append(lambda: not_empty_check('slopegridfileformat', data, errors, context))
-    
-    if aspectoption == 'Constant':
-        actions.append(lambda: not_empty_check('aspect', data, errors, context))        
+
+        # check if the file selected for slope
+        # has already been selected for any other input
+        actions.append(lambda: _validate_file_selection(data, errors, 'slopegridfile', 'slope'))
+
+    if aspectoption == 'Compute':
+        data['aspectgridfile'] = None
+    elif aspectoption == 'Constant':
+        actions.append(lambda: not_empty_check('aspect', data, errors, context))
+        data['aspectgridfile'] = None
     elif aspectoption == 'Grid':
+        if data['aspectgridfile'] == '0':
+            data['aspectgridfile'] = None
+
         actions.append(lambda: not_empty_check('aspectgridfile', data, errors, context))
         actions.append(lambda: not_empty_check('aspectgridfileformat', data, errors, context))
-        
-    if latoption == 'Constant':
-        actions.append(lambda: not_empty_check('latitude', data, errors, context))        
+
+        # check if the file selected for aspect
+        # has already been selected for any other input
+        actions.append(lambda: _validate_file_selection(data, errors, 'aspectgridfile', 'aspect'))
+
+    if latoption == 'Compute':
+        data['latitudegridfile'] = None
+    elif latoption == 'Constant':
+        actions.append(lambda: not_empty_check('latitude', data, errors, context))
+        data['latitudegridfile'] = None
     elif latoption == 'Grid':
+        if data['latitudegridfile'] == '0':
+            data['latitudegridfile'] = None
+
         actions.append(lambda: not_empty_check('latitudegridfile', data, errors, context))
         actions.append(lambda: not_empty_check('latitudegridfileformat', data, errors, context))
-        
-    if lonoption == 'Constant':
-        actions.append(lambda: not_empty_check('longitude', data, errors, context))        
+
+        # check if the file selected for latitude
+        # has already been selected for any other input
+        actions.append(lambda: _validate_file_selection(data, errors, 'latitudegridfile', 'latitude'))
+
+    if lonoption == 'Compute':
+        data['longitudegridfile'] = None
+    elif lonoption == 'Constant':
+        actions.append(lambda: not_empty_check('longitude', data, errors, context))
+        data['longitudegridfile'] = None
     elif lonoption == 'Grid':
+        if data['longitudegridfile'] == '0':
+            data['longitudegridfile'] = None
+
         actions.append(lambda: not_empty_check('longitudegridfile', data, errors, context))
         actions.append(lambda: not_empty_check('longitudegridfileformat', data, errors, context))
-    
+
+        # check if the file selected for longitude
+        # has already been selected for any other input
+        actions.append(lambda: _validate_file_selection(data, errors, 'longitudegridfile', 'longitude'))
+
+    if form_stage not in session:
+        session[form_stage] = {}
+
+    session[form_stage] = data
+    session.save()
+
     for action in actions:
         try:
             action()
@@ -1193,37 +1427,37 @@ def _validate_stage_eight():
     
     tempoption = tk.request.params['taoption']  
     temperature = tk.request.params['ta']  
-    temptextfile =tk.request.params['tatextfile'] 
+    temptextfile = tk.request.params['tatextfile']
     tempgridfile = tk.request.params['tagridfile']
     tempgridfileformat = tk.request.params['tagridfileformat']
     
     precoption = tk.request.params['precoption']  
     precipitation = tk.request.params['prec']  
-    prectextfile =tk.request.params['prectextfile'] 
+    prectextfile = tk.request.params['prectextfile']
     precgridfile = tk.request.params['precgridfile']
     precgridfileformat = tk.request.params['precgridfileformat']
     
     windoption = tk.request.params['voption']  
     wind = tk.request.params['v']  
-    windtextfile =tk.request.params['vtextfile'] 
+    windtextfile = tk.request.params['vtextfile']
     windgridfile = tk.request.params['vgridfile']
     windgridfileformat = tk.request.params['vgridfileformat']
     
     rhoption = tk.request.params['rhoption']  
     rh = tk.request.params['rh']  
-    rhtextfile =tk.request.params['rhtextfile'] 
+    rhtextfile = tk.request.params['rhtextfile']
     rhgridfile = tk.request.params['rhgridfile']
     rhgridfileformat = tk.request.params['rhgridfileformat']
     
     snowalboption = tk.request.params['snowalboption']  
     snowalb = tk.request.params['snowalb']  
-    snowalbtextfile =tk.request.params['snowalbtextfile'] 
+    snowalbtextfile = tk.request.params['snowalbtextfile']
     snowalbgridfile = tk.request.params['snowalbgridfile']
     snowalbgridfileformat = tk.request.params['snowalbgridfileformat']
     
     qgoption = tk.request.params['qgoption']  
     qg = tk.request.params['qg']  
-    qgtextfile =tk.request.params['qgtextfile'] 
+    qgtextfile = tk.request.params['qgtextfile']
     qggridfile = tk.request.params['qggridfile']
     qggridfileformat = tk.request.params['qggridfileformat']
     
@@ -1267,63 +1501,193 @@ def _validate_stage_eight():
         errors[key] = []
         
     context = {}   
-    if form_stage not in session:
-        session[form_stage] = {}
-         
-    session[form_stage] = data    
-    session.save()
-          
+
     not_empty_check = tk.get_validator('not_empty') 
     actions = []
-    
-    if tempoption == 'Constant':
-        actions.append(lambda: not_empty_check('ta', data, errors, context))   
+
+    if tempoption == 'Compute':
+        data['tatextfile'] = None
+        data['tagridfile'] = None
+    elif tempoption == 'Constant':
+        actions.append(lambda: not_empty_check('ta', data, errors, context))
+        data['tatextfile'] = None
+        data['tagridfile'] = None
     elif tempoption == 'Text':
-        actions.append(lambda: not_empty_check('tatextfile', data, errors, context))     
+        data['tagridfile'] = None
+        if data['tatextfile'] == '0':  # value 0 represents the option- Select a a file..
+            data['tatextfile'] = None
+
+        actions.append(lambda: not_empty_check('tatextfile', data, errors, context))
+
+        # check if the file selected for temp
+        # has already been selected for any other input
+        actions.append(lambda: _validate_file_selection(data, errors, 'tatextfile', 'temperature'))
+
     elif tempoption == 'Grid':
+        data['tatextfile'] = None
+        if data['tagridfile'] == '0':
+            data['tagridfile'] = None
+
         actions.append(lambda: not_empty_check('tagridfile', data, errors, context))
         actions.append(lambda: not_empty_check('tagridfileformat', data, errors, context))
-        
-    if precoption == 'Constant':
-        actions.append(lambda: not_empty_check('prec', data, errors, context))   
+
+        # check if the file selected for temperature
+        # has already been selected for any other input
+        actions.append(lambda: _validate_file_selection(data, errors, 'tagridfile', 'temperature'))
+
+    if precoption == 'Compute':
+        data['prectextfile'] = None
+        data['precgridfile'] = None
+    elif precoption == 'Constant':
+        actions.append(lambda: not_empty_check('prec', data, errors, context))
+        data['prectextfile'] = None
+        data['precgridfile'] = None
     elif precoption == 'Text':
-        actions.append(lambda: not_empty_check('prectextfile', data, errors, context))     
+        data['precgridfile'] = None
+        if data['prectextfile'] == '0':
+            data['prectextfile'] = None
+
+        actions.append(lambda: not_empty_check('prectextfile', data, errors, context))
+
+        # check if the file selected for precipitation
+        # has already been selected for any other input
+        actions.append(lambda: _validate_file_selection(data, errors, 'prectextfile', 'precipitation'))
+
     elif precoption == 'Grid':
+        data['prectextfile'] = None
+        if data['precgridfile'] == '0':
+            data['precgridfile'] = None
+
         actions.append(lambda: not_empty_check('precgridfile', data, errors, context))
         actions.append(lambda: not_empty_check('precgridfileformat', data, errors, context))
-    
-    if windoption == 'Constant':
-        actions.append(lambda: not_empty_check('v', data, errors, context))   
+
+        # check if the file selected for precipitation
+        # has already been selected for any other input
+        actions.append(lambda: _validate_file_selection(data, errors, 'precgridfile', 'precipitation'))
+
+    if windoption == 'Compute':
+        data['vtextfile'] = None
+        data['vgridfile'] = None
+    elif windoption == 'Constant':
+        actions.append(lambda: not_empty_check('v', data, errors, context))
+        data['vtextfile'] = None
+        data['vgridfile'] = None
     elif windoption == 'Text':
-        actions.append(lambda: not_empty_check('vtextfile', data, errors, context))     
+        data['vgridfile'] = None
+        if data['vtextfile'] == '0':
+            data['vtextfile'] = None
+
+        actions.append(lambda: not_empty_check('vtextfile', data, errors, context))
+
+        # check if the file selected for wind
+        # has already been selected for any other input
+        actions.append(lambda: _validate_file_selection(data, errors, 'vtextfile', 'wind'))
+
     elif windoption == 'Grid':
+        data['vtextfile'] = None
+        if data['vgridfile'] == '0':
+            data['vgridfile'] = None
+
         actions.append(lambda: not_empty_check('vgridfile', data, errors, context))
         actions.append(lambda: not_empty_check('vgridfileformat', data, errors, context))
-        
-    if rhoption == 'Constant':
-        actions.append(lambda: not_empty_check('rh', data, errors, context))   
+
+        # check if the file selected for wind
+        # has already been selected for any other input
+        actions.append(lambda: _validate_file_selection(data, errors, 'vgridfile', 'wind'))
+
+    if rhoption == 'Compute':
+        data['rhtextfile'] = None
+        data['rhgridfile'] = None
+    elif rhoption == 'Constant':
+        actions.append(lambda: not_empty_check('rh', data, errors, context))
+        data['rhtextfile'] = None
+        data['rhgridfile'] = None
     elif rhoption == 'Text':
-        actions.append(lambda: not_empty_check('rhtextfile', data, errors, context))     
+        data['rhgridfile'] = None
+        if data['rhtextfile'] == '0':
+            data['rhtextfile'] = None
+
+        actions.append(lambda: not_empty_check('rhtextfile', data, errors, context))
+
+        # check if the file selected for rh
+        # has already been selected for any other input
+        actions.append(lambda: _validate_file_selection(data, errors, 'rhtextfile', 'relative humidity'))
+
     elif rhoption == 'Grid':
+        data['rhtextfile'] = None
+        if data['rhgridfile'] == '0':
+            data['rhgridfile'] = None
+
         actions.append(lambda: not_empty_check('rhgridfile', data, errors, context))
         actions.append(lambda: not_empty_check('rhgridfileformat', data, errors, context))
-        
-    if snowalboption == 'Constant':
-        actions.append(lambda: not_empty_check('snowalb', data, errors, context))   
+
+        # check if the file selected for rh
+        # has already been selected for any other input
+        actions.append(lambda: _validate_file_selection(data, errors, 'rhgridfile', 'relative humidity'))
+
+    if snowalboption == 'Compute':
+        data['snowalbtextfile'] = None
+        data['snowalbgridfile'] = None
+    elif snowalboption == 'Constant':
+        actions.append(lambda: not_empty_check('snowalb', data, errors, context))
+        data['snowalbtextfile'] = None
+        data['snowalbgridfile'] = None
     elif snowalboption == 'Text':
-        actions.append(lambda: not_empty_check('snowalbtextfile', data, errors, context))     
+        data['snowalbgridfile'] = None
+        if data['snowalbtextfile'] == '0':
+            data['snowalbtextfile'] = None
+
+        actions.append(lambda: not_empty_check('snowalbtextfile', data, errors, context))
+
+        # check if the file selected for snow albedo
+        # has already been selected for any other input
+        actions.append(lambda: _validate_file_selection(data, errors, 'snowalbtextfile', 'snow albedo'))
+
     elif snowalboption == 'Grid':
+        data['snowalbtextfile'] = None
+        if data['snowalbgridfile'] == '0':
+            data['snowalbgridfile'] = None
+
         actions.append(lambda: not_empty_check('snowalbgridfile', data, errors, context))
         actions.append(lambda: not_empty_check('snowalbgridfileformat', data, errors, context))
-        
+
+        # check if the file selected for snow albedo
+        # has already been selected for any other input
+        actions.append(lambda: _validate_file_selection(data, errors, 'snowalbgridfile', 'snow albedo'))
+
     if qgoption == 'Constant':
-        actions.append(lambda: not_empty_check('qg', data, errors, context))   
+        actions.append(lambda: not_empty_check('qg', data, errors, context))
+        data['qgtextfile'] = None
+        data['qggridfile'] = None
     elif qgoption == 'Text':
-        actions.append(lambda: not_empty_check('qgtextfile', data, errors, context))     
+        data['qggridfile'] = None
+        if data['qgtextfile'] == '0':
+            data['qgtextfile'] = None
+
+        actions.append(lambda: not_empty_check('qgtextfile', data, errors, context))
+
+        # check if the file selected for ground heat flux
+        # has already been selected for any other input
+        actions.append(lambda: _validate_file_selection(data, errors, 'qgtextfile', 'ground heat flux'))
+
     elif qgoption == 'Grid':
+        data['qgtextfile'] = None
+        if data['qggridfile'] == '0':
+            data['qggridfile'] = None
+
         actions.append(lambda: not_empty_check('qggridfile', data, errors, context))
         actions.append(lambda: not_empty_check('qggridfileformat', data, errors, context))
-    
+
+        # check if the file selected for ground heat flux
+        # has already been selected for any other input
+        actions.append(lambda: _validate_file_selection(data, errors, 'qggridfile', 'ground heat flux'))
+
+    if form_stage not in session:
+        session[form_stage] = {}
+
+    session[form_stage] = data
+    session.save()
+
     for action in actions:
         try:
             action()
@@ -1335,37 +1699,37 @@ def _validate_stage_eight():
         try:
             float(data['ta'])
         except ValueError:
-            errors['ta'].append ('Temperature should be a numeric value')
+            errors['ta'].append('Temperature should be a numeric value')
     
     if precoption == 'Constant' and len(errors['prec']) == 0:
         try:
             float(data['prec'])
         except ValueError:
-            errors['prec'].append ('Precipitation should be a numeric value') 
+            errors['prec'].append('Precipitation should be a numeric value')
                  
     if windoption == 'Constant' and len(errors['v']) == 0:
         try:
             float(data['v'])
         except ValueError:
-            errors['v'].append ('Wind speed should be a numeric value')    
+            errors['v'].append('Wind speed should be a numeric value')
                  
     if rhoption == 'Constant' and len(errors['rh']) == 0:
         try:
             float(data['rh'])
         except ValueError:
-            errors['rh'].append ('Relative humidity should be a numeric value') 
+            errors['rh'].append('Relative humidity should be a numeric value')
                  
     if snowalboption == 'Constant' and len(errors['snowalb']) == 0:
         try:
             float(data['snowalb'])
         except ValueError:
-            errors['snowalb'].append ('Snow albedo should be a numeric value') 
+            errors['snowalb'].append('Snow albedo should be a numeric value')
                  
     if qgoption == 'Constant' and len(errors['qg']) == 0:
         try:
             float(data['qg'])
         except ValueError:
-            errors['qg'].append ('Ground heat flux should be a numeric value')     
+            errors['qg'].append('Ground heat flux should be a numeric value')
                  
     for key in errors:
         # Get the error message for the form field (key)
@@ -1414,17 +1778,34 @@ def _validate_stage_nine():
     not_empty_check = tk.get_validator('not_empty')   # not_empty(key, data, errors, context):
            
     if outputControlFileOption == 'No':
+        if data['outputControlFile'] == '0':
+            data['outputControlFile'] = None
         try:
             not_empty_check('outputControlFile', data, errors, context)
         except:
            pass
-    
+
+        # check if the file selected for output control file
+        # has already been selected for any other input
+        _validate_file_selection(data, errors, 'outputControlFile', 'output control')
+    else:
+        data['outputControlFile'] = None
+
     if aggrOutputControlFileOption == 'No':
+        if data['aggrOutputControlFile'] == '0':
+            data['aggrOutputControlFile'] = None
+
         try:
             not_empty_check('aggrOutputControlFile', data, errors, context)
         except:
            pass
-          
+
+        # check if the file selected for aggregated output control
+        # has already been selected for any other input
+        _validate_file_selection(data, errors, 'aggrOutputControlFile', 'aggregated output control')
+    else:
+        data['aggrOutputControlFile'] = None
+
     for key in errors:
         # Get the error message for the form field (key)
         value = errors.get(key)            
@@ -1438,6 +1819,25 @@ def _validate_stage_nine():
     form_vars['errors'] = errors
     form_vars['error_summary'] = error_summary
     return form_vars
+
+
+def _validate_file_selection(data, errors, file_form_field_name, file_name):
+    session = base.session
+    for frm_stage in session:
+        if frm_stage not in ['stage_1', 'stage_2', 'stage_3', 'stage_4', 'stage_5', 'stage_6', 'stage_7',
+                             'stage_8', 'stage_9']:
+            continue
+
+        form_stage_data = session[frm_stage]
+        for key, value in form_stage_data.items():
+            if value == '0' or not value:  # no file selected
+                continue
+            if key == file_form_field_name:
+                continue
+            if data[file_form_field_name] == value:
+                errors[file_form_field_name].append('The file you have selected as %s file is already '
+                                                    'selected for another input.' % file_name)
+                return
 
 
 def _get_default_data(form_stage):        
@@ -1618,7 +2018,7 @@ def _get_package_request_in_json_format():
     tk.c.ueb_input_section_data_items[section_name]['order'].append('Use default parameter file:')
     if not stage_2_data:
         # get the default data
-        stage_2_data =  _get_default_data_stage_two()
+        stage_2_data = _get_default_data_stage_two()
        
     default_parameter_file_name = 'param.dat'
     if stage_2_data['parametersfileoption'] == 'Yes':       
@@ -1630,15 +2030,14 @@ def _get_package_request_in_json_format():
         selected_file_ids['parameters_file_id'] = stage_2_data['parametersfile']
         ueb_request_data['ModelParametersFileName'] = _get_file_name_from_file_id(selected_file_ids['parameters_file_id'])
         tk.c.ueb_input_section_data_items[section_name]['Use default parameter file:'] = 'No' 
-        tk.c.ueb_input_section_data_itemss[section_name]['Parameter file name:'] = \
+        tk.c.ueb_input_section_data_items[section_name]['Parameter file name:'] = \
             ueb_request_data['ModelParametersFileName']
         tk.c.ueb_input_section_data_items[section_name]['order'].append('Parameter file name:')
-        
-    #stage_3_data = session['stage_3'] 
+
     stage_3_data = session.get('stage_3', None)
     if not stage_3_data:
         # get the default data
-        stage_3_data =  _get_default_data_stage_three()
+        stage_3_data = _get_default_data_stage_three()
        
     ueb_request_data['SiteInitialConditions'] = {}
     section_name = 'Site initial condition - state variables setup'
@@ -1672,8 +2071,7 @@ def _get_package_request_in_json_format():
             tk.c.ueb_input_section_data_items[section_name]['order'].append(var + '-grid file format:')  
             tk.c.ueb_input_section_data_items[section_name][var + '-grid file name:'] = \
                 stage_3_data[var + 'gridfileformat']
-        
-    #stage_4_data = session['stage_4']
+
     stage_4_data = session.get('stage_4', None)
     if not stage_4_data:
         # get the default data
@@ -1712,12 +2110,11 @@ def _get_package_request_in_json_format():
             tk.c.ueb_input_section_data_items[section_name]['order'].append(var + '-grid file format:')  
             tk.c.ueb_input_section_data_items[section_name][var + '-grid file name:'] =\
                 stage_4_data[var + 'gridfileformat']
-    
-    #stage_5_data = session['stage_5']
+
     stage_5_data = session.get('stage_5', None)
     if not stage_5_data:
         # get the default data
-        stage_5_data =  _get_default_data_stage_five()
+        stage_5_data = _get_default_data_stage_five()
     
     # set data for confirmation page
     section_name = 'Site initial condition - land cover variables setup'
@@ -1761,8 +2158,7 @@ def _get_package_request_in_json_format():
             tk.c.ueb_input_section_data_items[section_name]['order'].append(var + '-grid file format:')  
             tk.c.ueb_input_section_data_items[section_name][var + '-grid file name:'] = \
                 stage_5_data[var + 'gridfileformat']
-            
-    #stage_6_data = session['stage_6']
+
     stage_6_data = session.get('stage_6', None)
     if not stage_6_data:
         # get the default data
@@ -1817,12 +2213,11 @@ def _get_package_request_in_json_format():
             tk.c.ueb_input_section_data_items[section_name]['order'].append(var + '-grid file format:')  
             tk.c.ueb_input_section_data_items[section_name][var + '-grid file name:'] =\
                 stage_6_data[var + 'gridfileformat']
-    
-    #stage_7_data = session['stage_7']
+
     stage_7_data = session.get('stage_7', None)
     if not stage_7_data:
         # get the default data
-        stage_7_data =  _get_default_data_stage_seven()
+        stage_7_data = _get_default_data_stage_seven()
     
     # set data for confirmation page
     section_name = 'Site initial condition - monthly mean dirunal temperature setup'
@@ -1855,12 +2250,11 @@ def _get_package_request_in_json_format():
         var = 'b' + months_dict[month]
         tk.c.ueb_input_section_data_items[section_name]['order'].append(month + ':') 
         tk.c.ueb_input_section_data_items[section_name][month + ':'] = ueb_request_data['BristowCambellBValues'][var]
-        
-    #stage_8_data = session['stage_8']
+
     stage_8_data = session.get('stage_8', None)
     if not stage_8_data:
         # get the default data
-        stage_8_data =  _get_default_data_stage_eight()
+        stage_8_data = _get_default_data_stage_eight()
     
     # set data for confirmation page
     section_name = 'Time series variables setup'
@@ -1922,12 +2316,11 @@ def _get_package_request_in_json_format():
             tk.c.ueb_input_section_data_items[section_name]['order'].append(var + '-grid file format:')  
             tk.c.ueb_input_section_data_items[section_name][var + '-grid file name:'] =\
                 stage_8_data[var + 'gridfileformat']
-    
-    #stage_9_data = session['stage_9']
+
     stage_9_data = session.get('stage_9', None)
     if not stage_9_data:
         # get the default data
-        stage_9_data =  _get_default_data_stage_nine()
+        stage_9_data = _get_default_data_stage_nine()
     # set data for confirmation page
     section_name = 'Output variables setup'
     tk.c.ueb_input_sections.append(section_name)    
@@ -1968,7 +2361,7 @@ def _get_package_request_in_json_format():
             ueb_request_data['AggregatedOutputControlFileName']
        
     ueb_req_json = json.dumps(ueb_request_data)
-    ueb_request = {'selected_file_ids': selected_file_ids, 'ueb_req_json': ueb_req_json }
+    ueb_request = {'selected_file_ids': selected_file_ids, 'ueb_req_json': ueb_req_json}
     return ueb_request
 
 
@@ -1980,7 +2373,7 @@ def _convert_month_name_to_month_number(month):
 
 def _save_ueb_request_as_resource(pkgname, selected_file_ids):
     """
-    create a ckan package/datatset with package name as the name of the ueb model package request
+    create a ckan package/datatset with package title as the name of the ueb model package request
     save the package request information from the c object to a text file to a temporary dir
     and then add the file as a resource to the package created.    Also add all other files
     selected as inputs to build package as a resource in the same dataset
@@ -2028,8 +2421,9 @@ def _save_ueb_request_as_resource(pkgname, selected_file_ids):
     # retrieve some of the file meta data
     resource_url = resource_metadata.get('_label') # this will return datetime stamp/filename
     resource_url = base.h.url_for('storage_file', label=resource_url, qualified=False)
+
     if resource_url.startswith('/'):
-        resource_url = base.config.get('ckan.site_url','').rstrip('/') + resource_url
+        resource_url = base.config.get('ckan.site_url', '').rstrip('/') + resource_url
     
     resource_created_date = resource_metadata.get('_creation_date')
     resource_name = resource_metadata.get('filename_original')
@@ -2040,18 +2434,18 @@ def _save_ueb_request_as_resource(pkgname, selected_file_ids):
     
     # create unique package name using the current time stamp as a postfix to any package name
     uniq_postfix = datetime.now().isoformat().replace(':', '-').replace('.', '-').lower()
-    pkg_title = pkgname + '_'
+    pkg_title = pkgname  # + '_'
     data_dict = {
-                    'name': 'ueb_model_package_' + uniq_postfix,
-                    'title': pkg_title + uniq_postfix,
-                    'author': tk.c.userObj.name if tk.c.userObj else tk.c.author, # TODO: userObj is None always. Need to retrieve user full name
+                    'name': 'ueb_model_package_' + uniq_postfix,  # this needs to be unique as required by DB
+                    'title': pkg_title,  # + uniq_postfix,
+                    'author': tk.c.userObj.name if tk.c.userObj else tk.c.author,  # TODO: userObj is None always. Need to retrieve user full name
                     'notes': 'This is a dataset consisting of UEB model package related resources',
-                    'extras': [{'key': 'DataSetType', 'value': 'UEB Model Package'}, {'key': 'IsInputPackageAvailable',
-                                                                                      'value': 'No'},
+                    'extras': [{'key': 'DataSetType', 'value': 'UEB Model Package'},
+                               {'key': 'IsInputPackageAvailable', 'value': 'No'},
                                {'key': 'IsOutputPackageAvailable', 'value': 'No'}]
                  }
     
-    context = {'model': base.model, 'session': base.model.Session, 'user': tk.c.user or tk.c.author, 'save': 'save' }
+    context = {'model': base.model, 'session': base.model.Session, 'user': tk.c.user or tk.c.author, 'save': 'save'}
     try:
         pkg_dict = package_create_action(context, data_dict)
         log.info(source + 'A new dataset was created with name: %s' % data_dict['title'])
@@ -2066,13 +2460,13 @@ def _save_ueb_request_as_resource(pkgname, selected_file_ids):
     resource_create_action = tk.get_action('resource_create') 
     
     data_dict = {
-                "package_id": pkg_id, # id of the package/dataset to which the resource needs to be added
+                "package_id": pkg_id,  # id of the package/dataset to which the resource needs to be added
                 "url": resource_url,
                 "name": resource_name,
                 "created": resource_created_date,
-                "format":"txt",
+                "format": "txt",
                 "size": resource_size,
-                "description": 'UEB Model Package Request_' + str(datetime.now())                       
+                "description": 'UEB model package build request'
                 }
    
     try:
@@ -2091,7 +2485,7 @@ def _save_ueb_request_as_resource(pkgname, selected_file_ids):
         
     for file_id in selected_file_ids.values():
         # get the resource that has the id equal to the given resource id
-        data_dict = {'id': file_id }
+        data_dict = {'id': file_id}
         resource_metadata = resource_show_action(context, data_dict)
         resource_url = resource_metadata.get('url')        
         resource_name = resource_metadata.get('name')
@@ -2101,7 +2495,7 @@ def _save_ueb_request_as_resource(pkgname, selected_file_ids):
         resource_size = resource_metadata.get('_content_length')
         
         data_dict = {
-                "package_id": pkg_id, # id of the package/dataset to which the resource needs to be added
+                "package_id": pkg_id,  # id of the package/dataset to which the resource needs to be added
                 "url": resource_url,
                 "name": resource_name,
                 "created": resource_created_date,
@@ -2124,7 +2518,7 @@ def _save_ueb_request_as_resource(pkgname, selected_file_ids):
 def _upload_file(file_path):
     """
     uploads a file to ckan filestore as and returns file metadata
-    related to its existance in ckan
+    related to its existence in ckan
     param file_path: name of the file with its current location (path)
     """
     source = 'uebpackage.packagecreate._upload_file():'

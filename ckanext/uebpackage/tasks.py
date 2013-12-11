@@ -266,7 +266,7 @@ def _save_ueb_package_as_resource(service_call_results, pkg_request_resource_id)
                 "created": resource_created_date,
                 "format": 'zip',
                 "size": resource_size,
-                "description": 'UEB Model Package_' + str(datetime.now()),
+                "description": 'UEB input model package',
                 "ResourceType": 'UEB Input Package'      # extra metadata
                 }
     
@@ -375,9 +375,9 @@ def _save_ueb_output_package_as_resource(service_call_results, model_input_pkg_r
                 "url": resource_url,
                 "name": resource_name,
                 "created": resource_created_date,
-                "format":"zip",
+                "format": "zip",
                 "size": resource_size,
-                "description": 'UEB Model Output Package_' + str(datetime.now()),
+                "description": 'UEB model output package',
                 "ResourceType": 'UEB Output Package'      # extra metadata
                 }
     

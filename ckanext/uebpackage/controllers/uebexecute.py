@@ -119,27 +119,32 @@ class UEBexecuteController(base.BaseController):
         # get the resource that has the format field set to zip
         # and the ResourceType is 'UEB Input Package'
         data_dict = {'query': ['format:zip', 'ResourceType:UEB Input Package']}
-        shape_file_resources = resource_search_action(context, data_dict)['results']
+        model_pkg_resources = resource_search_action(context, data_dict)['results']
         
         # for each resource we need only the id (id be used as the selection value) and the name for display
         file_resources = []
-        for file_resource in shape_file_resources:
+        for file_resource in model_pkg_resources:
             resource = {}
             # filter out any deleted resources
             active_resource = uebhelper.get_resource(file_resource['id'])
             if not active_resource:
                 continue            
-            
+
             #check if this input model pkg resource has a value for the 
             #extra metadata field- UEBRunStatus meaning this package has been
             #already used for running UEB. In that case skip this resource
             ueb_run_status = file_resource.get('UEBRunStatus', None)
             if ueb_run_status:
                 continue
-            
+
+            # check if the model package belongs to the current user, otherwise skip
             # get the matching resource object and then get the id of the related package
             resource_obj = base.model.Resource.get(file_resource['id'])
-            related_pkg_obj = resource_obj.resource_group.package           
+            related_pkg_obj = resource_obj.resource_group.package
+            if related_pkg_obj.author:
+                if related_pkg_obj.author != tk.c.user:
+                    continue
+
             pkg_title = related_pkg_obj.title
             # remove the datestamp part of the package title which starts with an underscore
             underscore_index = pkg_title.find('_')

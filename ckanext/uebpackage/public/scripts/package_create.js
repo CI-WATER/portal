@@ -3,7 +3,9 @@ ckan.module('package_create', function (jQuery, _) {
   return {
     initialize: function () {
       //console.log('I've been called for element: %o', this.el);
-      
+
+      this.$('#field-pkgname').focus();
+
       // track the radio button checked status change event
       this.$('#radDomainPolygonFileType').change(jQuery.proxy(this.showHidePolygonFileSelection));
       this.$('#radDomainNetCDFFileType').change(jQuery.proxy(this.showHideNetCDFFileSelection));
