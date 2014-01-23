@@ -6,58 +6,70 @@ import tasks
 import os
 import logging
 import ckan.model.meta as meta
+import threading
+import time
 
 log = logging.getLogger('ckan.logic')
 
 
-def run_apcheduler():
-    scheduler = Scheduler()
-    source = 'uebpackage.plugin.run_scheduler.run_jobs():'
+class UEBScheduler(object):
+    @classmethod
+    def run_apcheduler(self):
+        scheduler = Scheduler()
+        scheduler.coalesce = True
+        scheduler.start()
+        source = 'uebpackage.plugin.run_scheduler.run_jobs():'
+        # set the interval to half the time of actual interval at which you want the job to run
+        # the scheduler will miss a job run between every 2 actual runs. The log will show a message like
+        # "skipped: maximum number of running instances reached (1)" each time it misses a run.
+        # That's why the interval is set to half of the actual interval we want the job to run.
+        interval = 15   # the job actually will be run at an interval of interval * 2 minutes
 
-    @scheduler.interval_schedule(minutes=30)
-    def run_jobs():
-        session = meta.Session
-        log.info(source + 'Started scheduled background jobs')
-        
-        # add taks is for debug   
-        sum = tasks.add(2,3)
-        print sum
-        
-        try:            
-            log.info(source + "Checking ueb model build request status")
-            tasks.check_ueb_request_process_status()
-            log.info(source + "UEB model build request status check finished")
-        except Exception as e:            
-            log.error(source + 'Failed to check ueb package build request status.\nException:%s' % e)
-            pass
-        try:
-            log.info(source + "Retrieving ueb model package from app server")
-            tasks.retrieve_ueb_packages()
-            log.info(source + "Retrieving ueb model package from app server was successful")
-        except Exception as e:
-            log.error(source + 'Failed to retrieve ueb package from app server.\nException:%s' % e)
-            pass
-        
-        try:            
-            log.info(source + "Checking ueb model run status")
-            tasks.check_ueb_run_status()
-            log.info(source + "UEB model run status check finished")
-        except Exception as e:            
-            log.error(source + 'Failed to check ueb package run status.\nException:%s' % e)
-            pass
-        try:
-            log.info(source + "Retrieving ueb model output package from app server")
-            tasks.retrieve_ueb_run_output_packages()
-            log.info(source + "Retrieving ueb model output package from app server was successful")
-        except Exception as e:
-            log.error(source + 'Failed to retrieve ueb model output package from app server.\nException:%s' % e)
-            pass
+        @scheduler.interval_schedule(minutes=interval)  # @scheduler.interval_schedule(minutes=interval, max_instances=1)
+        def run_jobs():
+            lock = threading.RLock()
+            lock.acquire()
+            session = meta.Session
+            log.info(source + 'Started scheduled background jobs')
 
-        session.remove()
-        log.info(source + 'Finished scheduled background jobs')
+            # add task is for debug
+            total = tasks.add(2, 3)
+            print total
 
-    #scheduler.configure(options_from_ini_file)
-    scheduler.start()
+            try:
+                log.info(source + "Checking ueb model build request status")
+                tasks.check_ueb_request_process_status()
+                log.info(source + "UEB model build request status check finished")
+            except Exception as e:
+                log.error(source + 'Failed to check ueb package build request status.\nException:%s' % e)
+                pass
+            try:
+                log.info(source + "Retrieving ueb model package from app server")
+                tasks.retrieve_ueb_packages()
+                log.info(source + "Retrieving ueb model package from app server was successful")
+            except Exception as e:
+                log.error(source + 'Failed to retrieve ueb package from app server.\nException:%s' % e)
+                pass
+
+            try:
+                log.info(source + "Checking ueb model run status")
+                tasks.check_ueb_run_status()
+                log.info(source + "UEB model run status check finished")
+            except Exception as e:
+                log.error(source + 'Failed to check ueb package run status.\nException:%s' % e)
+                pass
+            try:
+                log.info(source + "Retrieving ueb model output package from app server")
+                tasks.retrieve_ueb_run_output_packages()
+                log.info(source + "Retrieving ueb model output package from app server was successful")
+            except Exception as e:
+                log.error(source + 'Failed to retrieve ueb model output package from app server.\nException:%s' % e)
+                pass
+
+            session.remove()
+            log.info(source + 'Finished scheduled background jobs')
+            time.sleep(interval * 60)
+            lock.release()
 
 
 def uebpackage_build_main_navigation(*args):
@@ -104,8 +116,7 @@ class UebPackagePlugins(p.SingletonPlugin):
         # Tell CKAN to use the template files in
         # ckanext-uebpackage/ckanext/uebpackage/templates.
         p.toolkit.add_template_directory(config, 'templates') 
-        
-        
+
         # add the extension's public dir path so that 
         # ckan can find any resources used from this path
         # get the current dir path (here) for this plugin
@@ -135,4 +146,4 @@ class UebPackagePlugins(p.SingletonPlugin):
         # other extensions.
         return {'uebpackage_build_nav_main': uebpackage_build_main_navigation}
    
-    run_apcheduler() 
+    UEBScheduler.run_apcheduler()

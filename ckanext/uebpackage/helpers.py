@@ -3,7 +3,8 @@ import ckan.plugins as p
 import logging
 import ckan.lib.dictization.model_dictize as model_dictize
 from ckan.controllers import storage
-
+from sqlalchemy import *
+from ckan import model
 
 tk = p.toolkit
 _ = tk._  # translator function
@@ -37,8 +38,10 @@ class StringSettings(object):
     app_server_api_get_ueb_package_url = '/api/GetUEBPackage'
     app_server_api_run_ueb_url = '/api/RunUEB'
     app_server_api_get_ueb_run_output = '/api/UEBModelRunOutput'
-    app_server_job_status_complete = 'Complete'
+    app_server_job_status_success = 'Success'
     app_server_job_status_processing = 'Processing'
+    app_server_job_status_in_queue = 'In queue'
+    app_server_job_status_error = 'Error'
     app_server_job_status_package_available = 'Package available'
 
 
@@ -50,7 +53,48 @@ def _register_translator():
     translator_obj = MockTranslator()
     registry.register(pylons.translator, translator_obj)
 
-    
+
+def table(name):
+    return Table(name, model.meta.metadata, autoload=True)
+
+
+def is_user_owns_resource(resource_id, username):
+    """
+    check if a given user identified by the username owns a given resource
+    identified by resource_id. Returns True if owns otherwise False
+
+    @param resource_id: id of the resource
+    @param username: user name of the user
+    @return: True or False
+    """
+
+    resource_obj = base.model.Resource.get(resource_id)
+    related_pkg_obj = resource_obj.resource_group.package
+    package_role_table = table('package_role')
+    user_object_role_table = table('user_object_role')
+
+    # setting the field context == 'Package' and field role=='admin' of the
+    # user_object_role table gives us the id of the user who owns (uploaded) a given resource
+    sql = select([user_object_role_table.c.user_id], from_obj=[package_role_table.join(user_object_role_table)]).\
+        where(package_role_table.c.package_id == related_pkg_obj.id).\
+        where(user_object_role_table.c.context == 'Package').where(user_object_role_table.c.role == 'admin')
+
+    # the following query execution gives us a list containing one user id (since there
+    # can be only one owner for a given resource) for the user
+    # who have ownership for the provided resource_id
+    query_result = base.model.Session.execute(sql).first()
+    if query_result:
+        resource_owner_id = query_result[0]
+        resource_owner = base.model.User.get(unicode(resource_owner_id))
+        if resource_owner:
+            if resource_owner.name == username:
+                return True
+            else:
+                return False
+    else:
+        return False
+
+
 def update_resource(resource_id, data_dict, update_message=None, backgroundTask=False):
     """
     Updates a resource identified by resource_id
@@ -82,7 +126,7 @@ def update_resource(resource_id, data_dict, update_message=None, backgroundTask=
     context = {'model': base.model, 'session': base.model.Session}
     
     if update_message:
-       context['message'] =  update_message
+       context['message'] = update_message
     
     try:
         context['user'] = tk.c.user or tk.c.author

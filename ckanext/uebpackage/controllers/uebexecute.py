@@ -17,8 +17,7 @@ class UEBexecuteController(base.BaseController):
     def select_model_package(self):
         source = 'uebpackage.uebexecute.select_model_package():'
         errors = {}
-        data = {}
-        data['selected_pkg_file_id'] = None
+        data = {'selected_pkg_file_id': None}
         error_summary = {}
         form_vars = {'data': data, 'errors': errors, 'error_summary': error_summary}
         tk.c.is_checkbox_checked = False
@@ -65,9 +64,7 @@ class UEBexecuteController(base.BaseController):
 
         # send request to app server
         # TODO: read the app server address from config (.ini) file
-        #service_host_address = 'thredds-ci-water.bluezone.usu.edu'
         service_host_address = uebhelper.StringSettings.app_server_host_address
-        #service_request_url = '/api/RunUEB'
         service_request_url = uebhelper.StringSettings.app_server_api_run_ueb_url
         connection = httplib.HTTPConnection(service_host_address)
         headers = {'Content-Type': 'application/octet-stream', 'Connection': 'Keep-alive'}  # 'multipart/form-data'
@@ -137,31 +134,26 @@ class UEBexecuteController(base.BaseController):
             if ueb_run_status:
                 continue
 
-            # check if the model package belongs to the current user, otherwise skip
-            # get the matching resource object and then get the id of the related package
-            resource_obj = base.model.Resource.get(file_resource['id'])
-            related_pkg_obj = resource_obj.resource_group.package
-            if related_pkg_obj.author:
-                if related_pkg_obj.author != tk.c.user:
-                    continue
+            # check if the file resource is owned by the current user
+            user_owns_resource = uebhelper.is_user_owns_resource(file_resource['id'], tk.c.user)
 
-            pkg_title = related_pkg_obj.title
-            # remove the datestamp part of the package title which starts with an underscore
-            underscore_index = pkg_title.find('_')
-            if underscore_index != -1:
-                pkg_title = pkg_title[:underscore_index]
+            if user_owns_resource:
+                # get the matching resource object (ueb model pkg file) and then get the id of the
+                # related package/dataset
+                resource_obj = base.model.Resource.get(file_resource['id'])
+                related_dataset_obj = resource_obj.resource_group.package
+                dataset_title = related_dataset_obj.title
+                max_len = 50
+                if len(dataset_title) > max_len:
+                    dataset_title = dataset_title[:max_len] + '...'
 
-            max_len = 50
-            if len(pkg_title) > max_len:
-                pkg_title = pkg_title[:max_len] + '...'
+                dataset_title = ' (' + dataset_title + ')'
 
-            pkg_title = ' (' + pkg_title + ')'
-                
-            resource['id'] = file_resource['id']
-            resource['url'] = file_resource['url']
-            resource['name'] = file_resource['name'] + pkg_title
-            resource['description'] = file_resource['description'] 
-            file_resources.append(resource) 
+                resource['id'] = file_resource['id']
+                resource['url'] = file_resource['url']
+                resource['name'] = file_resource['name'] + dataset_title
+                resource['description'] = file_resource['description']
+                file_resources.append(resource)
                        
         tk.c.ueb_input_model_packages = file_resources  
     
@@ -175,14 +167,10 @@ class UEBexecuteController(base.BaseController):
         param ueb_model_pkg_CKAN_resource_id: id of the resource to be updated
         param run_job_id: ueb run job id returned from app server responsible for running ueb
         @rtype: updated resource dictionary if successful otherwise None
+
         """
-        # TODO: the following documentation needs to be updated to match the parameters of this function
-        #matching_resource = _get_resource(ueb_model_pkg_request_resource_id)    
-        #resource_update_action = tk.get_action('resource_update')
-        #context = {'model': base.model, 'session': base.model.Session,
-        #           'user': base.c.user or base.c.author}
-        
-        # the data_dict needs to be the resource metadata for an existing resource
+        # the data_dict passed to the update function below
+        # needs to be the resource metadata for an existing resource
         # (all fields and their corresponding values)
         # once we have retrieved a resource we can update value for any fields
         # by assigning new value to that field except for the 'extras' field.
@@ -190,15 +178,25 @@ class UEBexecuteController(base.BaseController):
         # from filestore. Since the extras field holds a json string that contains key/value pairs,
         # the way to update the extra field is to add a new key/value pair
         # to the resource metadata dict object where the key is not the name of a field in resource table.
-        # For example, as shown below, we are storing a vlaue for PackageProcessJobID
-        # which will be added/updated to the existing json string stored in the extras field
+        # For example, as shown below, we are storing a value for PackageProcessJobID
+        # which will be added/updated to the existing json string stored in the extras field of the resource table
 
         data_dict = {'RunJobID': run_job_id}
         updated_resource = uebhelper.update_resource(ueb_model_pkg_CKAN_resource_id, data_dict)
         return updated_resource  
     
     def _update_ueb_model_pkg_run_status(self, ueb_model_pkg_CKAN_resource_id, status):
-        # TODO: include docstring
+
+        """
+        Updates a ueb model package request resource's 'extras' field to include
+        RunJobID: param pkg_process_id
+        Note that the extra field in resource table holds a json string
+
+        param ueb_model_pkg_CKAN_resource_id: id of the resource to be updated
+        param status: ueb run status returned from app server responsible for running ueb
+        @rtype: updated resource dictionary if successful otherwise None
+
+        """
         data_dict = {'UEBRunStatus': status}
         updated_resource = uebhelper.update_resource(ueb_model_pkg_CKAN_resource_id, data_dict)
         return updated_resource

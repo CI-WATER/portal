@@ -9,7 +9,7 @@
 {% block subtitle %}{{ _('UEB Package Create Request') }}{% endblock %}
 
 {% block breadcrumb_content %}
-  <li class="active">{% link_for _('Create UEB Model Package'), controller='ckanext.uebpackage.controllers.packagecreate:PackagecreateController', action='packagecreateform' %}</li>
+<li class="active" xmlns="http://www.w3.org/1999/html">{% link_for _('Create UEB Model Package'), controller='ckanext.uebpackage.controllers.packagecreate:PackagecreateController', action='packagecreateform' %}</li>
 {% endblock %}
 
 
@@ -17,7 +17,6 @@
   {{ super() }}
   {% resource 'uebresources/css/main.css' %}   
   {% resource 'uebresources/scripts/package_create.js' %}
-
 {% endblock -%}
 
 {% block secondary_content %}
@@ -39,7 +38,9 @@
 			{% endif %}
 
 			{% if c.form_stage == 'stage_confirm' %}
-				{% set sidebar_info = _('Review your inputs and if you need to change any configurations, click the Edit button for a specific section. If you are ready to submit your request, select the Confirm button.') %}
+				{% set sidebar_info = _('Review your inputs and if you need to change any configurations,
+                                         click the Edit button for a specific section. If you are ready to submit
+                                         your request, select the Confirm button.') %}
 			{% endif %}
 			<div class="module-content">
 		    	<p>{{ sidebar_info }}</p>
@@ -52,19 +53,23 @@
   <section class="module offset1" width=730px>
     <div class="module-content">		
 		{% block error_summary %}
-    		{{ form.errors(error_summary) }}
+    		{# not using the form.errors macro as it displays the error messages as unicode strings
+                {{ form.errors(error_summary) }}
+            #}
+            {% snippet 'snippets/error_summary.html', errors=error_summary %}
   		{% endblock %}
+
   		{# using the html5 attribute 'data-module' to include the package_create.js file #}
   		<form name="ueb_pkg_request" method="get" action="{{ action }}" data-module="package_create" >
-	    	<input type="hidden" name="form_stage" value="{{ c.form_stage }}" />	  
+	    	<input type="hidden" name="form_stage" value="{{ c.form_stage }}" />
 	    	{% if c.form_stage != 'stage_confirm' %}
 		    	{% block stages %}
-		    		{% snippet 'packagecreate_stages.html', stages =stages %}	    		
-				{% endblock %}  
+		    		{% snippet 'packagecreate_stages.html', stages =stages %}
+				{% endblock %}
 			{% endif %}
-			
-			{# Set Package #} 	
-	    	{% if c.form_stage == 'stage_1' %}		    	
+
+			{# Set Package #}
+	    	{% if c.form_stage == 'stage_1' %}
 		    	{% block ueb_pkg_create_note %}
 		    		<span class="info-block info-block-small">
 	      				<i class="icon-info-sign"></i>
@@ -79,18 +84,18 @@
 		    		id='field-pkgname', placeholder= _('Enter package name'), error=errors.pkgname,
 		    		classes=['control-medium'])}}
 		    	{% endblock %}
-		    	
+
 		    	{% block form_field_pkgdescription %}
 		    		{{ form.textarea('pkgdescription', label = _('Description'), value=data.pkgdescription,
 		    		id='field-pkgdescription', placeholder= _(''), error=errors.pkgdescription,
 		    		classes=['control-medium'])}}
 		    	{% endblock %}
-		    	
+
 		    	{% block form_set_model_domain %}
 		    		<fieldset>
-		    			<legend>Set Model Domain</legend>   
-	    				{% block form_fields_setdomainfile %}	    					
-	    					<label >Select domain file type</label>		    					
+		    			<legend>Set Model Domain</legend>
+	    				{% block form_fields_setdomainfile %}
+	    					<label >Select domain file type</label>
 
 				    		<input type="radio" name="domainfiletypeoption" id="radDomainPolygonFileType" value="polygon"
                                     {% if data.domainfiletypeoption == 'polygon' or not data.domainfiletypeoption  %} checked {% endif %} />
@@ -101,29 +106,41 @@
                                     {% if data.domainfiletypeoption == '2DNetCDF'  %} checked {% endif %} />
 
 							<span class="ueb-radio inline">2D NetCDF file</span>
-							<br />																		
+							<br />
 				    	{% endblock %}
-				    	<p>				    					    	
+				    	<p>
 				    	{% block form_field_select_domain_shape_file %}
-				    		<div id="domainShapeFileSelection" class="control-group control-medium control-select">
+				    		{% snippet 'snippets/file_selection_dropdown.html',
+                                    dict={  'div_id': 'domainShapeFileSelection',
+                                            'field_id': 'field-shapefile',
+                                            'field-name': 'domainshapefile',
+                                            'selected_file': data.domainshapefile,
+                                            'file_format_control': False
+                                        },
+                                    files=c.ueb_domain_shape_files,
+                                    file_select_errors=errors.domainshapefile
+                            %}
+                            {# TODO: This needs to be deleted as replaced by the snippet code above
+                            <div id="domainShapeFileSelection" class="control-group control-medium control-select">
                                 <div class="controls">
                                     <select id="field-shapefile" name="domainshapefile" data-module="autocomplete" >
-                                        {#<option value="" {% if not data.domainshapefile %} selected="selected" {% endif %}>{{ _('Select a shape file...') }}</option>#}
+                                        <option value="" {% if not data.domainshapefile %} selected="selected" {% endif %}>{{ _('Select a shape file...') }}</option>
                                         {% for file in c.ueb_domain_shape_files %}
                                             <option value="{{ file.id }}" {% if data.domainshapefile == file.id %} selected="selected" {% endif %}>{{ file.name }}</option>
                                         {% endfor %}
                                     </select>
-                                    {% if errors.domainshapefile %}<span class="error-block">{{ errors.domainshapefile }}</span>{% endif %}
+                                    {% snippet 'snippets/form_field_error.html', field_errors=errors.domainshapefile %}
 
-                                    {#
+
                                     {% set format_attrs={'data-module': 'autocomplete', 'data-module-source': '/api/2/util/resource/format_autocomplete?incomplete=?'} %}
                                         {% call form.input('domainshapefile', id='field-domainshapefile', label=_('Select a shape file'), placeholder=_(''), value=data.domainshapefile, error=errors.domainshapefile, classes=['control-medium'], attrs=format_attrs) %}
 
                                         {% endcall %}
-                                    #}
+
                                 </div>
-				    		</div>					    	
-			    		{% endblock %}			    			
+				    		</div>
+                            #}
+			    		{% endblock %}
 			    		{% block form_field_select_domain_netcdf_file %}
                             {#TODO: Implement netcdf file selection similar to other file selection control on this form once the server side supports using netcdf for watershed domain #}
 			    			<div id="domainNetCDFFileSelection" class="control-group control-medium control-select">
@@ -145,7 +162,7 @@
 				    		id='field-buffersize', placeholder= _('500'), error=errors.buffersize,
 				    		classes=['control-medium'])}}
 				    	{% endblock %}
-				    	
+
 				    	{% block form_field_grid_cell_size %}
 				    		{{ form.input('gridcellsize', label = _('Domain grid cell size(m)'), type='text', value=data.gridcellsize,
 				    		id='field-gridcellsize', placeholder= _('100'), error=errors.gridcellsize,
@@ -153,7 +170,7 @@
 				    	{% endblock %}
 		    		</fieldset>
 		    	{% endblock %}
-		    	
+
 		    	{% block form_fields_set_simulation_time %}
 		    		<fieldset>
 		    			<legend>Set Simulation Time</legend>
@@ -162,20 +179,20 @@
 				    		id='field-startdate', placeholder= _('01/01/2011'), error=errors.startdate,
 				    		classes=['control-medium'])}}
 				    	{% endblock %}
-		    	
+
 				    	{% block form_field_sim_end_date %}
 				    		{{ form.input('enddate', label = _('Simulation end date'), type='text', value=data.enddate,
 				    		id='field-enddate', placeholder= _('12/31/2011'), error=errors.enddate,
 				    		classes=['control-medium'])}}
 				    	{% endblock %}
-		    	
+
 				    	{% block form_field_sim_time_step %}
 				    		{{ form.select('timestep', label=_('Time step (hr)'), options=[{'value':1}, {'value':2}, {'value':3}, {'value':4}, {'value':6}], selected=6, error=errors.timestep, classes=['control-medium'])}}
-				    	{% endblock %}   
-		    		</fieldset>		
-		    	{% endblock %}	        
+				    	{% endblock %}
+		    		</fieldset>
+		    	{% endblock %}
 	        {% endif %}
-	        
+
 	        {# Model Parameters #}
 	        {% if c.form_stage == 'stage_2' %}
 	        	{% block ueb_pkg_model_parameters_heading %}
@@ -187,34 +204,47 @@
                         {% if data.parametersfileoption == 'Yes' or not data.defaultparametersfile  %} checked {% endif %} />
 
 		    		<span class="ueb-radio inline">Yes</span>
-		    		<br /> 
+		    		<br />
 		    		<input type="radio" name="parametersfileoption" id="radParametersFileOptionNo" value="No"
                         {% if data.parametersfileoption == 'No' %} checked {% endif %} >
 
-					<span class="ueb-radio inline">No</span> 
+					<span class="ueb-radio inline">No</span>
 					<br />
                     {% block form_field_select_parameters_file %}
-					    <div id="parametersFileSelection" class="control-group control-medium control-select">
+					    {% snippet 'snippets/file_selection_dropdown.html',
+                                    dict={  'div_id': 'parametersFileSelection',
+                                            'field_id': 'field-parametersfile',
+                                            'field-name': 'parametersfile',
+                                            'selected_file': data.parametersfile,
+                                            'file_format_control': False
+                                        },
+                                    files=c.ueb_dat_files,
+                                    file_select_errors=errors.parametersfile
+                        %}
+                        {# TODO: Delete the following commented code as it has been replaced by the snippet code above
+                        <div id="parametersFileSelection" class="control-group control-medium control-select">
                             <div class="controls">
                                 <select id="field-parametersfile" name="parametersfile" data-module="autocomplete">
-                                    {#<option value=""{% if not data.parametersfile %} selected="selected" {% endif %}>{{ _('Select a parameters file...') }}</option>#}
+                                    <option value=""{% if not data.parametersfile %} selected="selected" {% endif %}>{{ _('Select a parameters file...') }}</option>
                                     {% for file in c.ueb_dat_files %}
                                         <option value="{{ file.id }}" {% if data.parametersfile == file.id %} selected="selected" {% endif %}>{{ file.name }}</option>
                                     {% endfor %}
                                 </select>
-                                {% if errors.parametersfile %}<span class="error-block">{{ errors.parametersfile }}</span>{% endif %}
-                                {#
+                                {% snippet 'snippets/form_field_error.html', field_errors=errors.parametersfile %}
+
+
                                 {% set format_attrs={'data-module': 'autocomplete', 'data-module-source': '/api/2/util/resource/format_autocomplete?incomplete=?'} %}
                                     {% call form.input('parametersfile', id='field-parametersfile', label=_('Select a parameters file'), placeholder=_(''), value=data.parametersfile, error=errors.parametersfile, classes=['control-medium'], attrs=format_attrs) %}
 
                                     {% endcall %}
-                                #}
+
 	    			        </div>
                         </div>
+                        #}
                     {% endblock %}
 				{% endblock %}
 	        {% endif %}
-	        
+
 	        {# Site Initial Conditions: State Variables#}
 	        {% if c.form_stage == 'stage_3' %}
 	        	{% block ueb_pkg_site_initial_conditions_state_variables_heading %}
@@ -224,11 +254,11 @@
 					<label >Energy content options</label>
 					<input type="radio" name="usicoption" id="radUSICConstantOption" value="Constant"
                         {% if data.usicoption == 'Constant' or not data.usicoption %}  checked {% endif %} />
-					<span class="ueb-radio inline">{{ _('Use constant value') }}</span> 
+					<span class="ueb-radio inline">{{ _('Use constant value') }}</span>
 					<br />
 					<input type="radio" name="usicoption" id="radUSICGridOption" value="Grid"
                         {% if data.usicoption == 'Grid' %}  checked {% endif %} />
-					<span class="ueb-radio inline">{{ _('Use selected grid file') }}</span> 
+					<span class="ueb-radio inline">{{ _('Use selected grid file') }}</span>
 					<br />
 					{% block form_field_usic %}
 						<div id="usic_constant">
@@ -236,24 +266,46 @@
 				    		id='field-usic', placeholder= _('0'), error=errors.usic,
 				    		classes=['control-medium'])}}
 			    		</div>
-				    {% endblock %} 
-				    
+				    {% endblock %}
+
 				    {% block form_field_select_usic_grid_file %}
+                        {% snippet 'snippets/file_selection_dropdown.html',
+                                    dict={  'div_id': 'usic_gridfile',
+                                            'field_id': 'field-usicgridfile',
+                                            'field-name': 'usicgridfile',
+                                            'selected_file': data.usicgridfile,
+                                            'file_format_control': True,
+                                            'format_field_name': 'usicgridfileformat',
+                                            'label': _('NetCDF data dimension and variable details'),
+                                            'file_format': data.usicgridfileformat,
+                                            'field_fileformat_id': 'field-usicgridfileformat',
+                                            'placeholder': _('X:name of x-coordinate;Y:name of y-coordinate;D:name of data variable')
+                                        },
+                                    files=c.ueb_nc_files,
+                                    file_select_errors = errors.usicgridfile,
+                                    file_format_errors = errors.usicgridfileformat
+                        %}
+                        {# TODO: the following commented block needs to be deleted as it has been replaced by the snippet above
                         <div id="usic_gridfile" class="control-group control-medium control-select">
                             <div class="controls">
                                 <select id="field-usicgridfile" name="usicgridfile" data-module="autocomplete">
-                                    {#<option value="" {% if not data.usicgridfile %} selected="selected" {% endif %}>{{ _('Select a grid file(2D NetCDF)') }}</option>#}
+                                    <option value="" {% if not data.usicgridfile %} selected="selected" {% endif %}>{{ _('Select a grid file(2D NetCDF)') }}</option>
                                     {% for file in c.ueb_nc_files %}
                                         <option value="{{ file.id }}" {% if data.usicgridfile == file.id %} selected="selected" {% endif %}>{{ file.name }}</option>
                                     {% endfor %}
                                 </select>
-                                {% if errors.usicgridfile %}<span class="error-block">{{ errors.usicgridfile }}</span>{% endif %}
-                                {#
+                                {% snippet 'snippets/form_field_error.html', field_errors=errors.usicgridfile %}
+
+
                                 {% set format_attrs={'data-module': 'autocomplete', 'data-module-source': '/api/2/util/resource/format_autocomplete?incomplete=?'} %}
                                     {% call form.input('usicgridfile', id='field-usicgridfile', label=_('Select a grid file(2D NetCDF)'), placeholder=_(''), value=data.usicgridfile, error=errors.usicgridfile, classes=['control-medium'], attrs=format_attrs) %}
 
                                     {% endcall %}
-                                #}
+                                {{ form.input("{{ dict['format_field_name'] }}", label = "{{ dict['label'] }}", type='text', value= "{{ dict['file_format'] }}",
+                                    id= "{{ dict['field-fileformat_id'] }}", placeholder= "{{ dict['placeholder'] }}", error=file_format_errors,
+                                    classes=['control-medium'])
+                                }}
+
 
                                 {% block form_field_usic_usic_grid_file_format %}
                                     {{ form.input('usicgridfileformat', label = _('NetCDF data dimension and variable details'), type='text', value=data.usicgridfileformat,
@@ -263,6 +315,7 @@
 
 	        	            </div>
                         </div>
+                        #}
                     {% endblock %}
 	        	{% endblock %}
 
@@ -271,13 +324,13 @@
 					<input type="radio" name="wsisoption" id= "radWSISConstantOption" value="Constant"
                             {% if data.wsisoption == 'Constant' or not data.wsisoption %} checked {% endif %} />
 
-					<span class="ueb-radio inline">{{ _('Use contant value') }}</span> 
+					<span class="ueb-radio inline">{{ _('Use contant value') }}</span>
 					<br />
 
 					<input type="radio" name="wsisoption" id= "radWSISGridOption" value="Grid"
                             {% if data.wsisoption == 'Grid' %} checked {% endif %} />
 
-					<span class="ueb-radio inline">{{ _('Use selected grid file') }}</span> 
+					<span class="ueb-radio inline">{{ _('Use selected grid file') }}</span>
 					<br />
 					{% block form_field_wsis %}
 						<div id="wsis_constant">
@@ -287,21 +340,39 @@
 			    		</div>
 				    {% endblock %}
                     {% block form_field_select_wsis_grid_file %}
+                        {% snippet 'snippets/file_selection_dropdown.html',
+                                    dict={  'div_id': 'wsis_gridfile',
+                                            'field_id': 'field-wsisgridfile',
+                                            'field-name': 'wsisgridfile',
+                                            'selected_file': data.wsisgridfile,
+                                            'file_format_control': True,
+                                            'format_field_name': 'wsisgridfileformat',
+                                            'label': _('NetCDF data dimension and variable details'),
+                                            'file_format': data.wsisgridfileformat,
+                                            'field_fileformat_id': 'field-wsisgridfileformat',
+                                            'placeholder': _('X:name of x-coordinate;Y:name of y-coordinate;D:name of data variable')
+                                        },
+                                    files=c.ueb_nc_files,
+                                    file_select_errors = errors.wsisgridfile,
+                                    file_format_errors = errors.wsisgridfileformat
+                        %}
+                        {# TODO: the following commented block needs to be deleted as it has been replaced by the snippet above
 				        <div id="wsis_gridfile" class="control-group control-medium control-select">
                             <div class="controls">
                                 <select id="field-wsisgridfile" name="wsisgridfile" data-module="autocomplete">
-                                    {#<option value="" {% if not data.wsisgridfile %} selected="selected" {% endif %}>{{ _('Select a grid file(2D NetCDF)') }}</option>#}
+                                    <option value="" {% if not data.wsisgridfile %} selected="selected" {% endif %}>{{ _('Select a grid file(2D NetCDF)') }}</option>
                                     {% for file in c.ueb_nc_files %}
                                         <option value="{{ file.id }}" {% if data.wsisgridfile == file.id %} selected="selected" {% endif %}>{{ file.name }}</option>
                                     {% endfor %}
                                 </select>
-                                {% if errors.wsisgridfile %}<span class="error-block">{{ errors.wsisgridfile }}</span>{% endif %}
-                                {#
+                                {% snippet 'snippets/form_field_error.html', field_errors=errors.wsisgridfile %}
+
+
                                     {% set format_attrs={'data-module': 'autocomplete', 'data-module-source': '/api/2/util/resource/format_autocomplete?incomplete=?'} %}
                                         {% call form.input('wsisgridfile', id='field-wsisgridfile', label=_('Select a grid file(2D NetCDF)'), placeholder=_(''), value=data.wsisgridfile, error=errors.wsisgridfile, classes=['control-medium'], attrs=format_attrs) %}
 
                                         {% endcall %}
-                                #}
+
 
                                 {% block form_field_wsis_grid_file_format %}
                                     {{ form.input('wsisgridfileformat', label = _('NetCDF data dimension and variable details'), type='text', value=data.wsisgridfileformat,
@@ -310,21 +381,22 @@
                                 {% endblock %}
 				            </div>
                         </div>
+                        #}
 				    {% endblock %}
                 {% endblock %}
-				
+
 				{% block form_fields_set_snow_surface_age_options %}
 					<label >Snow surface dimensionless age options</label>
 		    		<input type="radio" name="ticoption" id="radTICConstantOption" value="Constant"
                             {% if data.ticoption == 'Constant' or not data.ticoption %} checked {% endif %} />
 
-					<span class="ueb-radio inline">{{ _('Use a constant value') }}</span> 
+					<span class="ueb-radio inline">{{ _('Use a constant value') }}</span>
 					<br />
 
 					<input type="radio" name="ticoption" id="radTICGridOption" value="Grid"
                             {% if data.ticoption == 'Grid' %} checked {% endif %} >
 
-					<span class="ueb-radio inline">{{ _('Use selected grid file') }}</span> 
+					<span class="ueb-radio inline">{{ _('Use selected grid file') }}</span>
 					<br />
 					{% block form_field_tic %}
 						<div id="tic_constant">
@@ -335,21 +407,39 @@
 				    {% endblock %}
 
                     {% block form_field_select_tic_grid_file %}
+                        {% snippet 'snippets/file_selection_dropdown.html',
+                                    dict={  'div_id': 'tic_gridfile',
+                                            'field_id': 'field-ticgridfile',
+                                            'field-name': 'ticgridfile',
+                                            'selected_file': data.ticgridfile,
+                                            'file_format_control': True,
+                                            'format_field_name': 'ticgridfileformat',
+                                            'label': _('NetCDF data dimension and variable details'),
+                                            'file_format': data.ticgridfileformat,
+                                            'field_fileformat_id': 'field-ticgridfileformat',
+                                            'placeholder': _('X:name of x-coordinate;Y:name of y-coordinate;D:name of data variable')
+                                        },
+                                    files=c.ueb_nc_files,
+                                    file_select_errors = errors.ticgridfile,
+                                    file_format_errors = errors.ticgridfileformat
+                        %}
+                        {#
 				        <div id="tic_gridfile" class="control-group control-medium control-select">
                             <div class="controls">
                                 <select id="field-ticgridfile" name="ticgridfile" data-module="autocomplete">
-                                    {#<option value="" {% if not data.ticgridfile %} selected="selected" {% endif %}>{{ _('Select a grid file(2D NetCDF)') }}</option>#}
+                                    <option value="" {% if not data.ticgridfile %} selected="selected" {% endif %}>{{ _('Select a grid file(2D NetCDF)') }}</option>
                                     {% for file in c.ueb_nc_files %}
                                         <option value="{{ file.id }}" {% if data.ticgridfile == file.id %} selected="selected" {% endif %}>{{ file.name }}</option>
                                     {% endfor %}
                                 </select>
-                                {% if errors.ticgridfile %}<span class="error-block">{{ errors.ticgridfile }}</span>{% endif %}
-                                {#
+                                {% snippet 'snippets/form_field_error.html', field_errors=errors.ticgridfile %}
+
+
                                     {% set format_attrs={'data-module': 'autocomplete', 'data-module-source': '/api/2/util/resource/format_autocomplete?incomplete=?'} %}
                                         {% call form.input('ticgridfile', id='field-ticgridfile', label=_('Select a grid file(2D NetCDF)'), placeholder=_(''), value=data.ticgridfile, error=errors.ticgridfile, classes=['control-medium'], attrs=format_attrs) %}
 
                                         {% endcall %}
-                                #}
+
 
                                 {% block form_field_tic_grid_file_format %}
                                     {{ form.input('ticgridfileformat', label = _('NetCDF data dimension and variable details'), type='text', value=data.ticgridfileformat,
@@ -358,6 +448,7 @@
                                 {% endblock %}
                              </div>
 					    </div>
+                        #}
 				    {% endblock %}
 				{% endblock %}
 
@@ -367,13 +458,13 @@
 		    		<input type="radio" name="wcicoption" id= "radWCICConstantOption" value="Constant"
                             {% if data.wcicoption == 'Constant' or not data.wcicoption %}  checked {% endif %} />
 
-		    		<span class="ueb-radio inline">{{ _('Use a constant value') }}</span> 
+		    		<span class="ueb-radio inline">{{ _('Use a constant value') }}</span>
 		    		<br />
 
 					<input type="radio" name="wcicoption" id= "radWCICGridOption"  value="Grid"
                             {% if data.wcicoption == 'Grid' %} checked {% endif %}>
 
-					<span class="ueb-radio inline">{{ _('Use selected grid file') }}</span> 
+					<span class="ueb-radio inline">{{ _('Use selected grid file') }}</span>
 					<br />
 					{% block form_field_wcic %}
 						<div id="wcic_constant">
@@ -384,21 +475,39 @@
 				    {% endblock %}
 
                     {% block form_field_select_wcic_grid_file %}
+                        {% snippet 'snippets/file_selection_dropdown.html',
+                                    dict={  'div_id': 'wcic_gridfile',
+                                            'field_id': 'field-wcicgridfile',
+                                            'field-name': 'wcicgridfile',
+                                            'selected_file': data.wcicgridfile,
+                                            'file_format_control': True,
+                                            'format_field_name': 'wcicgridfileformat',
+                                            'label': _('NetCDF data dimension and variable details'),
+                                            'file_format': data.wcicgridfileformat,
+                                            'field_fileformat_id': 'field-wcicgridfileformat',
+                                            'placeholder': _('X:name of x-coordinate;Y:name of y-coordinate;D:name of data variable')
+                                        },
+                                    files=c.ueb_nc_files,
+                                    file_select_errors = errors.wcicgridfile,
+                                    file_format_errors = errors.wcicgridfileformat
+                        %}
+                        {#
 				        <div id="wcic_gridfile" class="control-group control-medium control-select">
                             <div class="controls">
                                 <select id="field-wcicgridfile" name="wcicgridfile" data-module="autocomplete">
-                                    {#<option value="" {% if not data.wcicgridfile %} selected="selected" {% endif %}>{{ _('Select a grid file(2D NetCDF)') }}</option>#}
+                                    <option value="" {% if not data.wcicgridfile %} selected="selected" {% endif %}>{{ _('Select a grid file(2D NetCDF)') }}</option>
                                     {% for file in c.ueb_nc_files %}
                                         <option value="{{ file.id }}" {% if data.wcicgridfile == file.id %} selected="selected" {% endif %}>{{ file.name }}</option>
                                     {% endfor %}
                                 </select>
-                                {% if errors.wcicgridfile %}<span class="error-block">{{ errors.wcicgridfile }}</span>{% endif %}
-                            {#
+                                {% snippet 'snippets/form_field_error.html', field_errors=errors.wcicgridfile %}
+
+
                                 {% set format_attrs={'data-module': 'autocomplete', 'data-module-source': '/api/2/util/resource/format_autocomplete?incomplete=?'} %}
                                 {% call form.input('wcicgridfile', id='field-wcisgridfile', label=_('Select a grid file(2D NetCDF)'), placeholder=_(''), value=data.wcicgridfile, error=errors.wcicgridfile, classes=['control-medium'], attrs=format_attrs) %}
 
                                 {% endcall %}
-                            #}
+
 		    			        {% block form_field_wcic_grid_file_format %}
                                     {{ form.input('wcicgridfileformat', label = _('NetCDF data dimension and variable details'), type='text', value=data.wcicgridfileformat,
                                     id='field-wcicgridfileformat', placeholder= _('X:name of x-coordinate;Y:name of y-coordinate;D:name of data variable'), error=errors.wcicgridfileformat,
@@ -406,10 +515,11 @@
                                 {% endblock %}
                             </div>
 				        </div>
+                        #}
 				    {% endblock %}
                 {% endblock %}
 	        {% endif %}
-	        
+
 	        {# Site Initial Conditions: Snow Variables#}
 	        {% if c.form_stage == 'stage_4' %}
 	        	{% block ueb_pkg_site_initial_conditions_snow_variables_heading %}
@@ -421,13 +531,13 @@
 		    		<input type="radio" name="dfoption" id="radDFConstantOption" value="Constant"
                             {% if data.dfoption == 'Constant' or not data.dfoption %} checked {% endif %} />
 
-					<span class="ueb-radio inline">{{ _('Use a constant value') }}</span> 
+					<span class="ueb-radio inline">{{ _('Use a constant value') }}</span>
 					<br />
 
 					<input type="radio" name="dfoption" id="radDFGridOption" value="Grid"
                             {% if data.dfoption == 'Grid' %} checked {% endif %} />
 
-					<span class="ueb-radio inline">{{ _('Use selected grid file') }}</span> 
+					<span class="ueb-radio inline">{{ _('Use selected grid file') }}</span>
 					<br />
 					{% block form_field_df %}
 						<div id="df_constant">
@@ -438,21 +548,39 @@
 				    {% endblock %}
 
                     {% block form_field_select_df_grid_file %}
+                        {% snippet 'snippets/file_selection_dropdown.html',
+                                    dict={  'div_id': 'df_gridfile',
+                                            'field_id': 'field-dfgridfile',
+                                            'field-name': 'dfgridfile',
+                                            'selected_file': data.dfgridfile,
+                                            'file_format_control': True,
+                                            'format_field_name': 'dfgridfileformat',
+                                            'label': _('NetCDF data dimension and variable details'),
+                                            'file_format': data.dfgridfileformat,
+                                            'field_fileformat_id': 'field-dfgridfileformat',
+                                            'placeholder': _('X:name of x-coordinate;Y:name of y-coordinate;D:name of data variable')
+                                        },
+                                    files=c.ueb_nc_files,
+                                    file_select_errors = errors.dfgridfile,
+                                    file_format_errors = errors.dfgridfileformat
+                        %}
+                        {#
 				        <div id="df_gridfile" class="control-group control-medium control-select">
                             <div class="controls">
                                 <select id="field-dfgridfile" name="dfgridfile" data-module="autocomplete">
-                                    {#<option value="" {% if not data.dfgridfile %} selected="selected" {% endif %}>{{ _('Select a grid file(2D NetCDF)') }}</option>#}
+                                    <option value="" {% if not data.dfgridfile %} selected="selected" {% endif %}>{{ _('Select a grid file(2D NetCDF)') }}</option>
                                     {% for file in c.ueb_nc_files %}
                                         <option value="{{ file.id }}" {% if data.dfgridfile == file.id %} selected="selected" {% endif %}>{{ file.name }}</option>
                                     {% endfor %}
                                 </select>
-                                {% if errors.dfgridfile %}<span class="error-block">{{ errors.dfgridfile }}</span>{% endif %}
-                            {#
+                                {% snippet 'snippets/form_field_error.html', field_errors=errors.dfgridfile %}
+
+
                                 {% set format_attrs={'data-module': 'autocomplete', 'data-module-source': '/api/2/util/resource/format_autocomplete?incomplete=?'} %}
                                     {% call form.input('dfgridfile', id='field-dfgridfile', label=_('Select a grid file(2D NetCDF)'), placeholder=_(''), value=data.dfgridfile, error=errors.dfgridfile, classes=['control-medium'], attrs=format_attrs) %}
 
                                     {% endcall %}
-                            #}
+
                                 {% block form_field_usic_df_grid_file_format %}
                                     {{ form.input('dfgridfileformat', label = _('NetCDF data dimension and variable details'), type='text', value=data.dfgridfileformat,
                                     id='field-dfgridfileformat', placeholder= _('X:name of x-coordinate;Y:name of y-coordinate;D:name of data variable'), error=errors.dfgridfileformat,
@@ -460,6 +588,7 @@
                                 {% endblock %}
                             </div>
 				        </div>
+                        #}
 				    {% endblock %}
 				{% endblock %}
 
@@ -469,13 +598,13 @@
 		    		<input type="radio" name="aepoption" id="radAepConstantOption" value="Constant"
                             {% if data.aepoption == 'Constant' or not data.aepoption %} checked {% endif %} />
 
-		    		<span class="ueb-radio inline">{{ _('Use a constant value') }}</span> 
+		    		<span class="ueb-radio inline">{{ _('Use a constant value') }}</span>
 		    		<br />
 
 					<input type="radio" name="aepoption" id="radAepGridOption" value="Grid"
                             {% if data.aepoption == 'Grid' %} checked {% endif %} />
 
-					<span class="ueb-radio inline">{{ _('Use selected grid file') }}</span> 
+					<span class="ueb-radio inline">{{ _('Use selected grid file') }}</span>
 					<br />
 					{% block form_field_aep %}
 						<div id="aep_constant">
@@ -486,21 +615,39 @@
 				    {% endblock %}
 
                     {% block form_field_select_aep_grid_file %}
+                        {% snippet 'snippets/file_selection_dropdown.html',
+                                    dict={  'div_id': 'aep_gridfile',
+                                            'field_id': 'field-aepgridfile',
+                                            'field-name': 'aepgridfile',
+                                            'selected_file': data.aepgridfile,
+                                            'file_format_control': True,
+                                            'format_field_name': 'aepgridfileformat',
+                                            'label': _('NetCDF data dimension and variable details'),
+                                            'file_format': data.aepgridfileformat,
+                                            'field_fileformat_id': 'field-aepgridfileformat',
+                                            'placeholder': _('X:name of x-coordinate;Y:name of y-coordinate;D:name of data variable')
+                                        },
+                                    files=c.ueb_nc_files,
+                                    file_select_errors = errors.aepgridfile,
+                                    file_format_errors = errors.aepgridfileformat
+                        %}
+                        {#
 				        <div id="aep_gridfile" class="control-group control-medium control-select">
                             <div class="controls">
                                 <select id="field-aepgridfile" name="aepgridfile" data-module="autocomplete">
-                                    {#<option value="" {% if not data.aepgridfile %} selected="selected" {% endif %}>{{ _('Select a grid file(2D NetCDF)') }}</option>#}
+                                    <option value="" {% if not data.aepgridfile %} selected="selected" {% endif %}>{{ _('Select a grid file(2D NetCDF)') }}</option>
                                     {% for file in c.ueb_nc_files %}
                                         <option value="{{ file.id }}" {% if data.aepgridfile == file.id %} selected="selected" {% endif %}>{{ file.name }}</option>
                                     {% endfor %}
                                 </select>
-                                {% if errors.aepgridfile %}<span class="error-block">{{ errors.aepgridfile }}</span>{% endif %}
-                            {#
+                                {% snippet 'snippets/form_field_error.html', field_errors=errors.aepgridfile %}
+
+
                                 {% set format_attrs={'data-module': 'autocomplete', 'data-module-source': '/api/2/util/resource/format_autocomplete?incomplete=?'} %}
                                 {% call form.input('aepgridfile', id='field-aepgridfile', label=_('Select a grid file(2D NetCDF)'), placeholder=_(''), value=data.aepgridfile, error=errors.aepgridfile, classes=['control-medium'], attrs=format_attrs) %}
 
                                 {% endcall %}
-                            #}
+
 
                                 {% block form_field_usic_aep_grid_file_format %}
                                     {{ form.input('aepgridfileformat', label = _('NetCDF data dimension and variable details'), type='text', value=data.aepgridfileformat,
@@ -509,22 +656,22 @@
                                 {% endblock %}
                             </div>
 				        </div>
+                        #}
 				    {% endblock %}
 				{% endblock %}
 
 				{% block form_fields_set_snow_load_per_unit_branch_area_options %}
 					<label >Maximum snow load held per unit branch area options </label>
-
 		    		<input type="radio" name="sbaroption" id="radSbarConstantOption" value="Constant"
                             {% if data.sbaroption == 'Constant' or not data.sbaroption %} checked {% endif %} />
 
-		    		<span class="ueb-radio inline">{{ _('Use a constant value') }}</span> 
+		    		<span class="ueb-radio inline">{{ _('Use a constant value') }}</span>
 		    		<br />
 
 					<input type="radio" name="sbaroption" id="radSbarGridOption"  value="Grid"
                             {% if data.sbaroption == 'Grid' %} checked {% endif %} />
 
-					<span class="ueb-radio inline">{{ _('Use selected grid file') }}</span> 
+					<span class="ueb-radio inline">{{ _('Use selected grid file') }}</span>
 					<br />
 					{% block form_field_sbar %}
 						<div id="sbar_constant">
@@ -535,21 +682,38 @@
 					{% endblock %}
 
                     {% block form_field_select_sbar_grid_file %}
+                        {% snippet 'snippets/file_selection_dropdown.html',
+                                    dict={  'div_id': 'sbar_gridfile',
+                                            'field_id': 'field-sbargridfile',
+                                            'field-name': 'sbargridfile',
+                                            'selected_file': data.sbargridfile,
+                                            'file_format_control': True,
+                                            'format_field_name': 'sbargridfileformat',
+                                            'label': _('NetCDF data dimension and variable details'),
+                                            'file_format': data.sbargridfileformat,
+                                            'field_fileformat_id': 'field-sbargridfileformat',
+                                            'placeholder': _('X:name of x-coordinate;Y:name of y-coordinate;D:name of data variable')
+                                        },
+                                    files=c.ueb_nc_files,
+                                    file_select_errors = errors.sbargridfile,
+                                    file_format_errors = errors.sbargridfileformat
+                        %}
+                        {#
 					    <div id="sbar_gridfile" class="control-group control-medium control-select">
                             <div class="controls">
                                 <select id="field-sbargridfile" name="sbargridfile" data-module="autocomplete">
-                                    {#<option value="" {% if not data.sbargridfile %} selected="selected" {% endif %}>{{ _('Select a grid file(2D NetCDF)') }}</option>#}
+                                    <option value="" {% if not data.sbargridfile %} selected="selected" {% endif %}>{{ _('Select a grid file(2D NetCDF)') }}</option>
                                     {% for file in c.ueb_nc_files %}
                                         <option value="{{ file.id }}" {% if data.sbargridfile == file.id %} selected="selected" {% endif %}>{{ file.name }}</option>
                                     {% endfor %}
                                 </select>
-                                {% if errors.sbargridfile %}<span class="error-block">{{ errors.sbargridfile }}</span>{% endif %}
-                                {#
+                                {% snippet 'snippets/form_field_error.html', field_errors=errors.sbargridfile %}
+
+
                                 {% set format_attrs={'data-module': 'autocomplete', 'data-module-source': '/api/2/util/resource/format_autocomplete?incomplete=?'} %}
                                     {% call form.input('sbargridfile', id='field-sbargridfile', label=_('Select a grid file(2D NetCDF)'), placeholder=_(''), value=data.sbargridfile, error=errors.sbargridfile, classes=['control-medium'], attrs=format_attrs) %}
 
                                     {% endcall %}
-                                #}
 
 
                                 {% block form_field_usic_sbar_grid_file_format %}
@@ -559,22 +723,22 @@
                                 {% endblock %}
                             </div>
 				        </div>
+                        #}
 				    {% endblock %}
 				{% endblock %}
 
 				{% block form_fields_set_albedo_beneath_snow_options %}
 					<label >Albedo of the substrate beneath the snow options  </label>
-
 		    		<input type="radio" name="subalboption" id="radSubalbConstantOption" value="Constant"
                             {% if data.subalboption == 'Constant' or not data.subalboption %} checked {% endif %} />
 
-		    		<span class="ueb-radio inline">{{ _('Use a constant value') }}</span> 
+		    		<span class="ueb-radio inline">{{ _('Use a constant value') }}</span>
 		    		<br />
 
 					<input type="radio" name="subalboption" id="radSubalbGridOption" value="Grid"
                             {% if data.subalboption == 'Grid' %} checked {% endif %} />
 
-					<span class="ueb-radio inline">{{ _('Use selected grid file') }}</span> 
+					<span class="ueb-radio inline">{{ _('Use selected grid file') }}</span>
 					<br />
 					{% block form_field_subalb %}
 						<div id="subalb_constant">
@@ -585,21 +749,39 @@
 				    {% endblock %}
 
                     {% block form_field_select_subalb_grid_file %}
+                        {% snippet 'snippets/file_selection_dropdown.html',
+                                    dict={  'div_id': 'subalb_gridfile',
+                                            'field_id': 'field-subalbgridfile',
+                                            'field-name': 'subalbgridfile',
+                                            'selected_file': data.subalbgridfile,
+                                            'file_format_control': True,
+                                            'format_field_name': 'subalbgridfileformat',
+                                            'label': _('NetCDF data dimension and variable details'),
+                                            'file_format': data.subalbgridfileformat,
+                                            'field_fileformat_id': 'field-subalbgridfileformat',
+                                            'placeholder': _('X:name of x-coordinate;Y:name of y-coordinate;D:name of data variable')
+                                        },
+                                    files=c.ueb_nc_files,
+                                    file_select_errors = errors.subalbgridfile,
+                                    file_format_errors = errors.subalbgridfileformat
+                        %}
+                        {#
 				        <div id="subalb_gridfile" class="control-group control-medium control-select">
                             <div class="controls">
                                 <select id="field-subalbgridfile" name="subalbgridfile" data-module="autocomplete">
-                                    {#<option value="" {% if not data.subalbgridfile %} selected="selected" {% endif %}>{{ _('Select a grid file(2D NetCDF)') }}</option>#}
+                                    <option value="" {% if not data.subalbgridfile %} selected="selected" {% endif %}>{{ _('Select a grid file(2D NetCDF)') }}</option>
                                     {% for file in c.ueb_nc_files %}
                                         <option value="{{ file.id }}" {% if data.subalbgridfile == file.id %} selected="selected" {% endif %}>{{ file.name }}</option>
                                     {% endfor %}
                                 </select>
-                                {% if errors.subalbgridfile %}<span class="error-block">{{ errors.subalbgridfile }}</span>{% endif %}
-                                {#
+                                {% snippet 'snippets/form_field_error.html', field_errors=errors.subalbgridfile %}
+
+
                                 {% set format_attrs={'data-module': 'autocomplete', 'data-module-source': '/api/2/util/resource/format_autocomplete?incomplete=?'} %}
                                     {% call form.input('subalbgridfile', id='field-subalbgridfile', label=_('Select a grid file(2D NetCDF)'), placeholder=_(''), value=data.subalbgridfile, error=errors.subalbgridfile, classes=['control-medium'], attrs=format_attrs) %}
 
                                     {% endcall %}
-                                #}
+
 
                                 {% block form_field_usic_subalb_grid_file_format %}
                                     {{ form.input('subalbgridfileformat', label = _('NetCDF data dimension and variable details'), type='text', value=data.subalbgridfileformat,
@@ -608,6 +790,7 @@
                                 {% endblock %}
                             </div>
 				        </div>
+                        #}
 				    {% endblock %}
 				{% endblock %}
 
@@ -617,13 +800,13 @@
 		    		<input type="radio" name="subtypeoption" id="radSubtypeConstantOption" value="Constant"
                             {% if data.subtypeoption == 'Constant' or not data.subtypeoption %} checked {% endif %} />
 
-		    		<span class="ueb-radio inline">{{ _('Use a constant value') }}</span> 
+		    		<span class="ueb-radio inline">{{ _('Use a constant value') }}</span>
 		    		<br />
 
 					<input type="radio" name="subtypeoption" id="radSubtypeGridOption" value="Grid"
                             {% if data.subtypeoption == 'Grid' %} checked {% endif %} />
 
-					<span class="ueb-radio inline">{{ _('Use selected grid file') }}</span> 
+					<span class="ueb-radio inline">{{ _('Use selected grid file') }}</span>
 					<br />
 					{% block form_field_subtype %}
 						<div id="subtype_constant">
@@ -636,21 +819,39 @@
 				    {% endblock %}
 
                     {% block form_field_select_subtype_grid_file %}
+                        {% snippet 'snippets/file_selection_dropdown.html',
+                                    dict={  'div_id': 'subtype_gridfile',
+                                            'field_id': 'field-subtypegridfile',
+                                            'field-name': 'subtypegridfile',
+                                            'selected_file': data.subtypegridfile,
+                                            'file_format_control': True,
+                                            'format_field_name': 'subtypegridfileformat',
+                                            'label': _('NetCDF data dimension and variable details'),
+                                            'file_format': data.subtypegridfileformat,
+                                            'field_fileformat_id': 'field-subtypegridfileformat',
+                                            'placeholder': _('X:name of x-coordinate;Y:name of y-coordinate;D:name of data variable')
+                                        },
+                                    files=c.ueb_nc_files,
+                                    file_select_errors = errors.subtypegridfile,
+                                    file_format_errors = errors.subtypegridfileformat
+                        %}
+                        {#
 					    <div id="subtype_gridfile" class="control-group control-medium control-select">
                             <div class="controls">
                                 <select id="field-subtypegridfile" name="subtypegridfile" data-module="autocomplete">
-                                    {#<option value="" {% if not data.subtypegridfile %} selected="selected" {% endif %}>{{ _('Select a grid file(2D NetCDF)') }}</option>#}
+                                    <option value="" {% if not data.subtypegridfile %} selected="selected" {% endif %}>{{ _('Select a grid file(2D NetCDF)') }}</option>
                                     {% for file in c.ueb_nc_files %}
                                         <option value="{{ file.id }}" {% if data.subtypegridfile == file.id %} selected="selected" {% endif %}>{{ file.name }}</option>
                                     {% endfor %}
                                 </select>
-                                {% if errors.subtypegridfile %}<span class="error-block">{{ errors.subtypegridfile }}</span>{% endif %}
-                            {#
+                                {% snippet 'snippets/form_field_error.html', field_errors=errors.subtypegridfile %}
+
+
                                 {% set format_attrs={'data-module': 'autocomplete', 'data-module-source': '/api/2/util/resource/format_autocomplete?incomplete=?'} %}
                                 {% call form.input('subtypegridfile', id='field-subtypegridfile', label=_('Select a grid file(2D NetCDF)'), placeholder=_(''), value=data.subtypegridfile, error=errors.subtypegridfile, classes=['control-medium'], attrs=format_attrs) %}
 
                                 {% endcall %}
-                            #}
+
 
                                 {% block form_field_usic_subtype_grid_file_format %}
                                     {{ form.input('subtypegridfileformat', label = _('NetCDF data dimension and variable details'), type='text', value=data.subtypegridfileformat,
@@ -659,6 +860,7 @@
                                 {% endblock %}
                             </div>
 				        </div>
+                        #}
 				    {% endblock %}
 				{% endblock %}
 				{% block form_fields_set_surface_runs_off_options %}
@@ -667,13 +869,13 @@
 		    		<input type="radio" name="gsurfoption" id="radGsurfConstantOption" value="Constant"
                             {% if data.gsurfoption == 'Constant' or not data.gsurfoption %} checked {% endif %} />
 
-		    		<span class="ueb-radio inline">{{ _('Use a constant value') }}</span> 
+		    		<span class="ueb-radio inline">{{ _('Use a constant value') }}</span>
 		    		<br />
 
 					<input type="radio" name="gsurfoption" id="radGsurfGridOption" value="Grid"
                             {% if data.gsurfoption == 'Grid' %} checked {% endif %} />
 
-					<span class="ueb-radio inline">{{ _('Use selected grid file') }}</span> 
+					<span class="ueb-radio inline">{{ _('Use selected grid file') }}</span>
 					<br />
 					{% block form_field_gsurf %}
 						<div id="gsurf_constant">
@@ -684,21 +886,39 @@
 				    {% endblock %}
 
                     {% block form_field_select_gsurf_grid_file %}
+                        {% snippet 'snippets/file_selection_dropdown.html',
+                                    dict={  'div_id': 'gsurf_gridfile',
+                                            'field_id': 'field-gsurfgridfile',
+                                            'field-name': 'gsurfgridfile',
+                                            'selected_file': data.gsurfgridfile,
+                                            'file_format_control': True,
+                                            'format_field_name': 'gsurfgridfileformat',
+                                            'label': _('NetCDF data dimension and variable details'),
+                                            'file_format': data.gsurfgridfileformat,
+                                            'field_fileformat_id': 'field-gsurfgridfileformat',
+                                            'placeholder': _('X:name of x-coordinate;Y:name of y-coordinate;D:name of data variable')
+                                        },
+                                    files=c.ueb_nc_files,
+                                    file_select_errors = errors.gsurfgridfile,
+                                    file_format_errors = errors.gsurfgridfileformat
+                        %}
+                        {#
 				        <div id="gsurf_gridfile" class="control-group control-medium control-select">
                             <div class="controls">
                                 <select id="field-gsurfgridfile" name="gsurfgridfile" data-module="autocomplete">
-                                    {#<option value="" {% if not data.gsurfgridfile %} selected="selected" {% endif %}>{{ _('Select a grid file(2D NetCDF)') }}</option>#}
+                                    <option value="" {% if not data.gsurfgridfile %} selected="selected" {% endif %}>{{ _('Select a grid file(2D NetCDF)') }}</option>
                                     {% for file in c.ueb_nc_files %}
                                         <option value="{{ file.id }}" {% if data.gsurfgridfile == file.id %} selected="selected" {% endif %}>{{ file.name }}</option>
                                     {% endfor %}
                                 </select>
-                                {% if errors.gsurfgridfile %}<span class="error-block">{{ errors.gsurfgridfile }}</span>{% endif %}
-                                {#
+                                {% snippet 'snippets/form_field_error.html', field_errors=errors.gsurfgridfile %}
+
+
                                 {% set format_attrs={'data-module': 'autocomplete', 'data-module-source': '/api/2/util/resource/format_autocomplete?incomplete=?'} %}
                                     {% call form.input('gsurfgridfile', id='field-gsurfgridfile', label=_('Select a grid file(2D NetCDF)'), placeholder=_(''), value=data.gsurfgridfile, error=errors.gsurfgridfile, classes=['control-medium'], attrs=format_attrs) %}
 
                                     {% endcall %}
-                                #}
+
 
 
                                 {% block form_field_usic_gsurf_grid_file_format %}
@@ -708,6 +928,7 @@
                                 {% endblock %}
                             </div>
 				        </div>
+                        #}
 				    {% endblock %}
 				{% endblock %}
 
@@ -717,40 +938,58 @@
 		    		<input type="radio" name="ts_lastoption" id="radTslastConstantOption" value="Constant"
                             {% if data.ts_lastoption == 'Constant' or not data.ts_lastoption %} checked {% endif %} />
 
-		    		<span class="ueb-radio inline">{{ _('Use a constnat value') }}</span> 
+		    		<span class="ueb-radio inline">{{ _('Use a constnat value') }}</span>
 		    		<br />
 
 					<input type="radio" name="ts_lastoption" id="radTslastGridOption" value="Grid"
                             {% if data.ts_lastoption == 'Grid' %} checked {% endif %} />
 
-					<span class="ueb-radio inline">{{ _('Use selected grid file') }}</span> 
+					<span class="ueb-radio inline">{{ _('Use selected grid file') }}</span>
 					<br />
 					{% block form_field_tslast %}
 						<div id="tslast_constant">
 				    		{% call form.input('ts_last', label = _('Snow surface temperature one day prior to the model starting time value'), type='text', value=data.ts_last,
 				    		id='field-ts_last', placeholder= _('-9999'), error=errors.ts_last,
 				    		classes=['control-medium']) %}
-				    		{{ form.info(_('For missing value enter -9999')) }}			    		
+				    		{{ form.info(_('For missing value enter -9999')) }}
 				    		{% endcall %}
 			    		</div>
 				    {% endblock %}
 
 				    {% block form_field_select_tslast_grid_file %}
+                        {% snippet 'snippets/file_selection_dropdown.html',
+                                    dict={  'div_id': 'tslast_gridfile',
+                                            'field_id': 'field-ts_lastgridfile',
+                                            'field-name': 'ts_lastgridfile',
+                                            'selected_file': data.ts_lastgridfile,
+                                            'file_format_control': True,
+                                            'format_field_name': 'ts_lastgridfileformat',
+                                            'label': _('NetCDF data dimension and variable details'),
+                                            'file_format': data.ts_lastgridfileformat,
+                                            'field_fileformat_id': 'field-ts_lastgridfileformat',
+                                            'placeholder': _('X:name of x-coordinate;Y:name of y-coordinate;D:name of data variable')
+                                        },
+                                    files=c.ueb_nc_files,
+                                    file_select_errors = errors.ts_lastgridfile,
+                                    file_format_errors = errors.ts_lastgridfileformat
+                        %}
+                        {#
                         <div id="tslast_gridfile" class="control-group control-medium control-select">
                             <div class="controls">
                                 <select id="field-ts_lastgridfile" name="ts_lastgridfile" data-module="autocomplete">
-                                    {#<option value="" {% if not data.ts_lastgridfile %} selected="selected" {% endif %}>{{ _('Select a grid file(2D NetCDF)') }}</option>#}
+                                    <option value="" {% if not data.ts_lastgridfile %} selected="selected" {% endif %}>{{ _('Select a grid file(2D NetCDF)') }}</option>
                                     {% for file in c.ueb_nc_files %}
                                         <option value="{{ file.id }}" {% if data.ts_lastgridfile == file.id %} selected="selected" {% endif %}>{{ file.name }}</option>
                                     {% endfor %}
                                 </select>
-                                {% if errors.ts_lastgridfile %}<span class="error-block">{{ errors.ts_lastgridfile }}</span>{% endif %}
-                            {#
+                                {% snippet 'snippets/form_field_error.html', field_errors=errors.ts_lastgridfile %}
+
+
                                 {% set format_attrs={'data-module': 'autocomplete', 'data-module-source': '/api/2/util/resource/format_autocomplete?incomplete=?'} %}
                                 {% call form.input('ts_lastgridfile', id='field-ts_lastgridfile', label=_('Select a grid file(2D NetCDF)'), placeholder=_(''), value=data.ts_lastgridfile, error=errors.ts_lastgridfile, classes=['control-medium'], attrs=format_attrs) %}
 
                                 {% endcall %}
-                            #}
+
 
                                 {% block form_field_usic_tslast_grid_file_format %}
                                     {{ form.input('ts_lastgridfileformat', label = _('NetCDF data dimension and variable details'), type='text', value=data.ts_lastgridfileformat,
@@ -759,10 +998,11 @@
                                 {% endblock %}
                              </div>
 				        </div>
+                        #}
                     {% endblock %}
-				{% endblock %}	
+				{% endblock %}
 			{% endif %}
-			
+
 			{# Site Initial Conditions: Land Cover Variables#}
 	        {% if c.form_stage == 'stage_5' %}
 	        	{% block ueb_pkg_site_initial_conditions_landcover_variables_heading %}
@@ -774,19 +1014,19 @@
 		    		<input type="radio" name="ccoption" id="radCCNLCDOption" value="NLCD"
                             {% if data.ccoption == 'NLCD' or not data.ccoption %} checked {% endif %} />
 
-					<span class="ueb-radio inline">{{ _('Derive from NLCD') }}</span> 
+					<span class="ueb-radio inline">{{ _('Derive from NLCD') }}</span>
 					<br />
 
 					<input type="radio" name="ccoption" id="radCCConstantOption"value="Constant"
                             {% if data.ccoption == 'Constant' %} checked {% endif %} />
 
-					<span class="ueb-radio inline">{{ _('Use a constant value') }}</span> 
+					<span class="ueb-radio inline">{{ _('Use a constant value') }}</span>
 					<br />
 
 					<input type="radio" name="ccoption" id="radCCGridOption" value="Grid"
                         {% if data.ccoption == 'Grid' %} checked {% endif %} />
 
-					<span class="ueb-radio inline">{{ _('Use selected grid file') }}</span> 
+					<span class="ueb-radio inline">{{ _('Use selected grid file') }}</span>
 					<br />
 					{% block form_field_cc %}
 						<div id="cc_constant">
@@ -794,24 +1034,41 @@
 				    		id='field-cc', placeholder= _('0'), error=errors.cc,
 				    		classes=['control-medium'])}}
 			    		</div>
-				    {% endblock %} 
+				    {% endblock %}
 
                     {% block form_field_select_cc_grid_file %}
+                        {% snippet 'snippets/file_selection_dropdown.html',
+                                    dict={  'div_id': 'cc_gridfile',
+                                            'field_id': 'field-ccgridfile',
+                                            'field-name': 'ccgridfile',
+                                            'selected_file': data.ccgridfile,
+                                            'file_format_control': True,
+                                            'format_field_name': 'ccgridfileformat',
+                                            'label': _('NetCDF data dimension and variable details'),
+                                            'file_format': data.ccgridfileformat,
+                                            'field_fileformat_id': 'field-ccgridfileformat',
+                                            'placeholder': _('X:name of x-coordinate;Y:name of y-coordinate;D:name of data variable')
+                                        },
+                                    files=c.ueb_nc_files,
+                                    file_select_errors = errors.ccgridfile,
+                                    file_format_errors = errors.ccgridfileformat
+                        %}
+                        {#
 				        <div id="cc_gridfile" class="control-group control-medium control-select">
                             <div class="controls">
                                 <select id="field-ccgridfile" name="ccgridfile" data-module="autocomplete">
-                                    {#<option value="" {% if not data.ccgridfile %} selected="selected" {% endif %}>{{ _('Select a grid file(2D NetCDF)') }}</option>#}
+                                    <option value="" {% if not data.ccgridfile %} selected="selected" {% endif %}>{{ _('Select a grid file(2D NetCDF)') }}</option>
                                     {% for file in c.ueb_nc_files %}
                                         <option value="{{ file.id }}" {% if data.ccgridfile == file.id %} selected="selected" {% endif %}>{{ file.name }}</option>
                                     {% endfor %}
                                 </select>
-                                {% if errors.ccgridfile %}<span class="error-block">{{ errors.ccgridfile }}</span>{% endif %}
-                                {#
+                                {% snippet 'snippets/form_field_error.html', field_errors=errors.ccgridfile %}
+
+
                                 {% set format_attrs={'data-module': 'autocomplete', 'data-module-source': '/api/2/util/resource/format_autocomplete?incomplete=?'} %}
                                     {% call form.input('ccgridfile', id='field-ccgridfile', label=_('Select a grid file(2D NetCDF)'), placeholder=_(''), value=data.ccgridfile, error=errors.ccgridfile, classes=['control-medium'], attrs=format_attrs) %}
 
                                     {% endcall %}
-                                #}
 
                                 {% block form_field_usic_cc_grid_file_format %}
                                     {{ form.input('ccgridfileformat', label = _('NetCDF data dimension and variable details'), type='text', value=data.ccgridfileformat,
@@ -820,6 +1077,7 @@
                                 {% endblock %}
                             </div>
 				        </div>
+                        #}
 				    {% endblock %}
 				{% endblock %}
 
@@ -829,19 +1087,19 @@
 		    		<input type="radio" name="hcanoption" id="radHcanNLCDOption" value="NLCD"
                             {% if data.hcanoption == 'NLCD' or not data.hcanoption %} checked {% endif %} />
 
-		    		<span class="ueb-radio inline">{{ _('Derive from NLCD') }}</span> 
+		    		<span class="ueb-radio inline">{{ _('Derive from NLCD') }}</span>
 		    		<br />
 
 					<input type="radio" name="hcanoption" id="radHcanConstantOption" value="Constant"
                             {% if data.hcanoption == 'Constant' %} checked {% endif %} >
 
-					<span class="ueb-radio inline">{{ _('Use a constant value') }}</span> 
+					<span class="ueb-radio inline">{{ _('Use a constant value') }}</span>
 					<br />
 
 					<input type="radio" name="hcanoption" id="radHcanGridOption"  value="Grid"
                             {% if data.hcanoption == 'Grid' %} checked {% endif %} />
 
-					<span class="ueb-radio inline">{{ _('Use selected grid file') }}</span> 
+					<span class="ueb-radio inline">{{ _('Use selected grid file') }}</span>
 					<br />
 					{% block form_field_hcan %}
 						<div id="hcan_constant">
@@ -852,21 +1110,39 @@
 				    {% endblock %}
 
                     {% block form_field_select_hcan_grid_file %}
+                        {% snippet 'snippets/file_selection_dropdown.html',
+                                    dict={  'div_id': 'hcan_gridfile',
+                                            'field_id': 'field-hcangridfile',
+                                            'field-name': 'hcangridfile',
+                                            'selected_file': data.hcangridfile,
+                                            'file_format_control': True,
+                                            'format_field_name': 'hcangridfileformat',
+                                            'label': _('NetCDF data dimension and variable details'),
+                                            'file_format': data.hcangridfileformat,
+                                            'field_fileformat_id': 'field-hcangridfileformat',
+                                            'placeholder': _('X:name of x-coordinate;Y:name of y-coordinate;D:name of data variable')
+                                        },
+                                    files=c.ueb_nc_files,
+                                    file_select_errors = errors.hcangridfile,
+                                    file_format_errors = errors.hcangridfileformat
+                        %}
+                        {#
 				        <div id="hcan_gridfile" class="control-group control-medium control-select">
                             <div class="controls">
                                 <select id="field-hcangridfile" name="hcangridfile" data-module="autocomplete">
-                                    {#<option value="" {% if not data.hcangridfile %} selected="selected" {% endif %}>{{ _('Select a grid file(2D NetCDF)') }}</option>#}
+                                    <option value="" {% if not data.hcangridfile %} selected="selected" {% endif %}>{{ _('Select a grid file(2D NetCDF)') }}</option>
                                     {% for file in c.ueb_nc_files %}
                                         <option value="{{ file.id }}" {% if data.hcangridfile == file.id %} selected="selected" {% endif %}>{{ file.name }}</option>
                                     {% endfor %}
                                 </select>
-                                {% if errors.hcangridfile %}<span class="error-block">{{ errors.hcangridfile }}</span>{% endif %}
-                                {#
+                                {% snippet 'snippets/form_field_error.html', field_errors=errors.hcangridfile %}
+
+
                                 {% set format_attrs={'data-module': 'autocomplete', 'data-module-source': '/api/2/util/resource/format_autocomplete?incomplete=?'} %}
                                     {% call form.input('hcangridfile', id='field-hcangridfile', label=_('Select a grid file(2D NetCDF)'), placeholder=_(''), value=data.hcangridfile, error=errors.hcangridfile, classes=['control-medium'], attrs=format_attrs) %}
 
                                     {% endcall %}
-                                #}
+
 
                                 {% block form_field_usic_hcan_grid_file_format %}
                                     {{ form.input('hcangridfileformat', label = _('NetCDF data dimension and variable details'), type='text', value=data.hcangridfileformat,
@@ -875,6 +1151,7 @@
                                 {% endblock %}
                             </div>
 				        </div>
+                        #}
 				    {% endblock %}
 				{% endblock %}
 
@@ -884,19 +1161,19 @@
 		    		<input type="radio" name="laioption" id="radLaiNLCDOption" value="NLCD"
                             {% if data.laioption == 'NLCD' or not data.laioption %} checked {% endif %} />
 
-		    		<span class="ueb-radio inline">{{ _('Derive from NLCD') }}</span> 
+		    		<span class="ueb-radio inline">{{ _('Derive from NLCD') }}</span>
 		    		<br />
 
 					<input type="radio" name="laioption" id="radLaiConstantOption"  value="Constant"
                             {% if data.laioption == 'Constant' %} checked {% endif %} />
 
-					<span class="ueb-radio inline">{{ _('Use a constant value') }}</span> 
+					<span class="ueb-radio inline">{{ _('Use a constant value') }}</span>
 					<br />
 
 					<input type="radio" name="laioption" id="radLaiGridOption"  value="Grid"
                             {% if data.laioption == 'Grid' %} checked {% endif %} />
 
-					<span class="ueb-radio inline">{{ _('Use selected grid file') }}</span> 
+					<span class="ueb-radio inline">{{ _('Use selected grid file') }}</span>
 					<br />
 					{% block form_field_lai %}
 						<div id="lai_constant">
@@ -906,21 +1183,39 @@
 			    		</div>
 				    {% endblock %}
                     {% block form_field_select_lai_grid_file %}
+                        {% snippet 'snippets/file_selection_dropdown.html',
+                                    dict={  'div_id': 'lai_gridfile',
+                                            'field_id': 'field-laigridfile',
+                                            'field-name': 'laigridfile',
+                                            'selected_file': data.laigridfile,
+                                            'file_format_control': True,
+                                            'format_field_name': 'laigridfileformat',
+                                            'label': _('NetCDF data dimension and variable details'),
+                                            'file_format': data.laigridfileformat,
+                                            'field_fileformat_id': 'field-laigridfileformat',
+                                            'placeholder': _('X:name of x-coordinate;Y:name of y-coordinate;D:name of data variable')
+                                        },
+                                    files=c.ueb_nc_files,
+                                    file_select_errors = errors.laigridfile,
+                                    file_format_errors = errors.laigridfileformat
+                        %}
+                        {#
 				        <div id="lai_gridfile" class="control-group control-medium control-select">
                             <div class="controls">
                                 <select id="field-laigridfile" name="laigridfile" data-module="autocomplete">
-                                    {#<option value="" {% if not data.laigridfile %} selected="selected" {% endif %}>{{ _('Select a grid file(2D NetCDF)') }}</option>#}
+                                    <option value="" {% if not data.laigridfile %} selected="selected" {% endif %}>{{ _('Select a grid file(2D NetCDF)') }}</option>
                                     {% for file in c.ueb_nc_files %}
                                         <option value="{{ file.id }}" {% if data.laigridfile == file.id %} selected="selected" {% endif %}>{{ file.name }}</option>
                                     {% endfor %}
                                 </select>
-                                {% if errors.laigridfile %}<span class="error-block">{{ errors.laigridfile }}</span>{% endif %}
-                                {#
+                                {% snippet 'snippets/form_field_error.html', field_errors=errors.laigridfile %}
+
+
                                 {% set format_attrs={'data-module': 'autocomplete', 'data-module-source': '/api/2/util/resource/format_autocomplete?incomplete=?'} %}
                                     {% call form.input('laigridfile', id='field-laigridfile', label=_('Select a grid file(2D NetCDF)'), placeholder=_(''), value=data.laigridfile, error=errors.laigridfile, classes=['control-medium'], attrs=format_attrs) %}
 
                                     {% endcall %}
-                                #}
+
 
                                 {% block form_field_usic_lai_grid_file_format %}
                                     {{ form.input('laigridfileformat', label = _('NetCDF data dimension and variable details'), type='text', value=data.laigridfileformat,
@@ -929,6 +1224,7 @@
                                 {% endblock %}
                             </div>
 				        </div>
+                        #}
 				    {% endblock %}
 				{% endblock %}
 
@@ -938,19 +1234,19 @@
 		    		<input type="radio" name="ycageoption" id="radYcageNLCDOption"  value="NLCD"
                             {% if data.ycageoption == 'NLCD' or not data.ycageoption %} checked {% endif %} />
 
-		    		<span class="ueb-radio inline">{{ _('Derive from NLCD') }}</span> 
+		    		<span class="ueb-radio inline">{{ _('Derive from NLCD') }}</span>
 		    		<br />
 
 					<input type="radio" name="ycageoption" id="radYcageConstantOption" value="Constant"
                             {% if data.ycageoption == 'Constant' %} checked {% endif %} />
 
-					<span class="ueb-radio inline">{{ _('Use a constant value') }}</span> 
+					<span class="ueb-radio inline">{{ _('Use a constant value') }}</span>
 					<br />
 
 					<input type="radio" name="ycageoption" id="radYcageGridOption" value="Grid"
                             {% if data.ycageoption == 'Grid' %} checked {% endif %} />
 
-					<span class="ueb-radio inline">{{ _('Use selected grid file') }}</span> 
+					<span class="ueb-radio inline">{{ _('Use selected grid file') }}</span>
 					<br />
 					{% block form_field_ycage %}
 						<div id="ycage_constant">
@@ -960,21 +1256,38 @@
 			    		</div>
 				    {% endblock %}
                     {% block form_field_select_ycage_grid_file %}
+                        {% snippet 'snippets/file_selection_dropdown.html',
+                                    dict={  'div_id': 'ycage_gridfile',
+                                            'field_id': 'field-ycagegridfile',
+                                            'field-name': 'ycagegridfile',
+                                            'selected_file': data.ycagegridfile,
+                                            'file_format_control': True,
+                                            'format_field_name': 'ycagegridfileformat',
+                                            'label': _('NetCDF data dimension and variable details'),
+                                            'file_format': data.ycagegridfileformat,
+                                            'field_fileformat_id': 'field-ycagegridfileformat',
+                                            'placeholder': _('X:name of x-coordinate;Y:name of y-coordinate;D:name of data variable')
+                                        },
+                                    files=c.ueb_nc_files,
+                                    file_select_errors = errors.ycagegridfile,
+                                    file_format_errors = errors.ycagegridfileformat
+                        %}
+                        {#
 				        <div id="ycage_gridfile" class="control-group control-medium control-select">
                             <div class="controls">
                                 <select id="field-ycagegridfile" name="ycagegridfile" data-module="autocomplete">
-                                    {#<option value="" {% if not data.ycagegridfile %} selected="selected" {% endif %}>{{ _('Select a grid file(2D NetCDF)') }}</option>#}
+                                    <option value="" {% if not data.ycagegridfile %} selected="selected" {% endif %}>{{ _('Select a grid file(2D NetCDF)') }}</option>
                                     {% for file in c.ueb_nc_files %}
                                         <option value="{{ file.id }}" {% if data.ycagegridfile == file.id %} selected="selected" {% endif %}>{{ file.name }}</option>
                                     {% endfor %}
                                 </select>
-                                {% if errors.ycagegridfile %}<span class="error-block">{{ errors.ycagegridfile }}</span>{% endif %}
-                                {#
+                                {% snippet 'snippets/form_field_error.html', field_errors=errors.ycagegridfile %}
+
+
                                 {% set format_attrs={'data-module': 'autocomplete', 'data-module-source': '/api/2/util/resource/format_autocomplete?incomplete=?'} %}
                                     {% call form.input('ycagegridfile', id='field-ycagegridfile', label=_('Select a grid file(2D NetCDF)'), placeholder=_(''), value=data.yacgegridfile, error=errors.ycagegridfile, classes=['control-medium'], attrs=format_attrs) %}
 
                                     {% endcall %}
-                                #}
 
                                 {% block form_field_usic_ycage_grid_file_format %}
                                     {{ form.input('ycagegridfileformat', label = _('NetCDF data dimension and variable details'), type='text', value=data.ycagegridfileformat,
@@ -983,10 +1296,11 @@
                                 {% endblock %}
                             </div>
 				        </div>
+                        #}
 				    {% endblock %}
                 {% endblock %}
 			{% endif %}
-			
+
 			{# Site Initial Conditions: Geographic Variables#}
 	        {% if c.form_stage == 'stage_6' %}
 	        	{% block ueb_pkg_site_initial_conditions_geographic_variables_heading %}
@@ -998,19 +1312,19 @@
 		    		<input type="radio" name="aproption" id="radAprComputeOption" value="Compute"
                             {% if data.aproption == 'Compute' or not data.aproption %} checked {% endif %} />
 
-		    		<span class="ueb-radio inline">{{ _('Derive from elevation data') }}</span> 
+		    		<span class="ueb-radio inline">{{ _('Derive from elevation data') }}</span>
 		    		<br />
 
 					<input type="radio" name="aproption" id="radAprConstantOption" value="Constant"
                             {% if data.aproption == 'Constant' %} checked {% endif %} />
 
-					<span class="ueb-radio inline">{{ _('Use a constant value') }}</span> 
+					<span class="ueb-radio inline">{{ _('Use a constant value') }}</span>
 					<br />
 
 					<input type="radio" name="aproption"  id= "radAprGridOption" value="Grid"
                             {% if data.aproption == 'Grid' %} checked {% endif %} />
 
-					<span class="ueb-radio inline">{{ _('Use selected grid file') }}</span> 
+					<span class="ueb-radio inline">{{ _('Use selected grid file') }}</span>
 					<br />
 					{% block form_field_apr %}
 						<div id="apr_constant">
@@ -1020,21 +1334,39 @@
 			    		</div>
 				    {% endblock %}
                     {% block form_field_select_apr_grid_file %}
+                        {% snippet 'snippets/file_selection_dropdown.html',
+                                    dict={  'div_id': 'apr_gridfile',
+                                            'field_id': 'field-aprgridfile',
+                                            'field-name': 'aprgridfile',
+                                            'selected_file': data.aprgridfile,
+                                            'file_format_control': True,
+                                            'format_field_name': 'aprgridfileformat',
+                                            'label': _('NetCDF data dimension and variable details'),
+                                            'file_format': data.aprgridfileformat,
+                                            'field_fileformat_id': 'field-yaprgridfileformat',
+                                            'placeholder': _('X:name of x-coordinate;Y:name of y-coordinate;D:name of data variable')
+                                        },
+                                    files=c.ueb_nc_files,
+                                    file_select_errors = errors.aprgridfile,
+                                    file_format_errors = errors.aprgridfileformat
+                        %}
+                        {#
 				        <div id="apr_gridfile" class="control-group control-medium control-select">
                             <div class="controls">
                                 <select id="field-aprgridfile" name="aprgridfile" data-module="autocomplete">
-                                    {#<option value="" {% if not data.aprgridfile %} selected="selected" {% endif %}>{{ _('Select a grid file(2D NetCDF)') }}</option>#}
+                                    <option value="" {% if not data.aprgridfile %} selected="selected" {% endif %}>{{ _('Select a grid file(2D NetCDF)') }}</option>
                                     {% for file in c.ueb_nc_files %}
                                         <option value="{{ file.id }}" {% if data.aprgridfile == file.id %} selected="selected" {% endif %}>{{ file.name }}</option>
                                     {% endfor %}
                                 </select>
-                                {% if errors.aprgridfile %}<span class="error-block">{{ errors.aprgridfile }}</span>{% endif %}
-                                {#
+                                {% snippet 'snippets/form_field_error.html', field_errors=errors.aprgridfile %}
+
+
                                     {% set format_attrs={'data-module': 'autocomplete', 'data-module-source': '/api/2/util/resource/format_autocomplete?incomplete=?'} %}
                                     {% call form.input('aprgridfile', id='field-aprgridfile', label=_('Select a grid file(2D NetCDF)'), placeholder=_(''), value=data.aprgridfile, error=errors.aprgridfile, classes=['control-medium'], attrs=format_attrs) %}
 
                                     {% endcall %}
-                                #}
+
 
                                 {% block form_field_usic_apr_grid_file_format %}
                                     {{ form.input('aprgridfileformat', label = _('NetCDF data dimension and variable details'), type='text', value=data.aprgridfileformat,
@@ -1043,27 +1375,27 @@
                                 {% endblock %}
                             </div>
 				        </div>
+                        #}
 					{% endblock %}
 				{% endblock %}
 				{% block form_fields_set_site_slope_options %}
 					<label >Site slope options</label>
-
 		    		<input type="radio" name="slopeoption" id="radSlopeComputeOption" value="Compute"
                             {% if data.slopeoption == 'Compute' or not data.slopeoption %} checked {% endif %} />
 
 					<span class="ueb-radio inline">{{ _('Derive from elevation data') }}</span>
-					<br /> 
+					<br />
 
 					<input type="radio" name="slopeoption" id="radSlopeConstantOption" value="Constant"
                             {% if data.slopeoption == 'Constant' %} checked {% endif %} />
 
-					<span class="ueb-radio inline">{{ _('Use a constant value') }}</span> 
+					<span class="ueb-radio inline">{{ _('Use a constant value') }}</span>
 					<br />
 
 					<input type="radio" name="slopeoption" id="radSlopeGridOption" value="Grid"
                             {% if data.slopeoption == 'Grid' %} checked {% endif %} />
 
-					<span class="ueb-radio inline">{{ _('Use selected grid file') }}</span> 
+					<span class="ueb-radio inline">{{ _('Use selected grid file') }}</span>
 					<br />
 					{% block form_field_slope %}
 						<div id="slope_constant">
@@ -1073,21 +1405,39 @@
 			    		</div>
 				    {% endblock %}
                     {% block form_field_select_slope_grid_file %}
+                        {% snippet 'snippets/file_selection_dropdown.html',
+                                    dict={  'div_id': 'slope_gridfile',
+                                            'field_id': 'field-slopegridfile',
+                                            'field-name': 'slopegridfile',
+                                            'selected_file': data.slopegridfile,
+                                            'file_format_control': True,
+                                            'format_field_name': 'slopegridfileformat',
+                                            'label': _('NetCDF data dimension and variable details'),
+                                            'file_format': data.slopegridfileformat,
+                                            'field_fileformat_id': 'field-slopegridfileformat',
+                                            'placeholder': _('X:name of x-coordinate;Y:name of y-coordinate;D:name of data variable')
+                                        },
+                                    files=c.ueb_nc_files,
+                                    file_select_errors = errors.slopegridfile,
+                                    file_format_errors = errors.slopegridfileformat
+                        %}
+                        {#
 				        <div id="slope_gridfile" class="control-group control-medium control-select">
                             <div class="controls">
                                 <select id="field-slopegridfile" name="slopegridfile" data-module="autocomplete">
-                                    {#<option value="" {% if not data.slopegridfile %} selected="selected" {% endif %}>{{ _('Select a grid file(2D NetCDF)') }}</option>#}
+                                    <option value="" {% if not data.slopegridfile %} selected="selected" {% endif %}>{{ _('Select a grid file(2D NetCDF)') }}</option>
                                     {% for file in c.ueb_nc_files %}
                                         <option value="{{ file.id }}" {% if data.slopegridfile == file.id %} selected="selected" {% endif %}>{{ file.name }}</option>
                                     {% endfor %}
                                 </select>
-                                {% if errors.slopegridfile %}<span class="error-block">{{ errors.slopegridfile }}</span>{% endif %}
-                                {#
+                                {% snippet 'snippets/form_field_error.html', field_errors=errors.slopegridfile %}
+
+
                                 {% set format_attrs={'data-module': 'autocomplete', 'data-module-source': '/api/2/util/resource/format_autocomplete?incomplete=?'} %}
                                     {% call form.input('slopegridfile', id='field-slopegridfile', label=_('Select a grid file(2D NetCDF)'), placeholder=_(''), value=data.slopegridfile, error=errors.slopegridfile, classes=['control-medium'], attrs=format_attrs) %}
 
                                     {% endcall %}
-                                #}
+
 
                                 {% block form_field_usic_slope_grid_file_format %}
                                     {{ form.input('slopegridfileformat', label = _('NetCDF data dimension and variable details'), type='text', value=data.aprgridfileformat,
@@ -1096,28 +1446,29 @@
                                 {% endblock %}
                             </div>
 				        </div>
+                        #}
                     {% endblock %}
-				{% endblock %}	
-				
+				{% endblock %}
+
 				{% block form_fields_set_site_aspect_options %}
 					<label >Site aspect options</label>
 
 		    		<input type="radio" name="aspectoption" id="radAspectComputeOption" value="Compute"
                             {% if data.aspectoption == 'Compute' or not data.aspectoption %} checked {% endif %} />
 
-		    		<span class="ueb-radio inline">{{ _('Derive from elevation data') }}</span> 
+		    		<span class="ueb-radio inline">{{ _('Derive from elevation data') }}</span>
 		    		<br />
 
 					<input type="radio" name="aspectoption" id="radAspectConstantOption" value="Constant"
                             {% if data.aspectoption == 'Constant' %} checked {% endif %} />
 
-					<span class="ueb-radio inline">{{ _('Use a constant value') }}</span> 
+					<span class="ueb-radio inline">{{ _('Use a constant value') }}</span>
 					<br />
 
 					<input type="radio" name="aspectoption" id="radAspectGridOption" value="Grid"
                             {% if data.aspectoption == 'Grid' %} checked {% endif %} />
 
-					<span class="ueb-radio inline">{{ _('Use selected grid file') }}</span> 
+					<span class="ueb-radio inline">{{ _('Use selected grid file') }}</span>
 					<br />
 					{% block form_field_aspect %}
 						<div id="aspect_constant">
@@ -1127,21 +1478,39 @@
 			    		</div>
 				    {% endblock %}
                     {% block form_field_select_aspect_grid_file %}
+                        {% snippet 'snippets/file_selection_dropdown.html',
+                                    dict={  'div_id': 'aspect_gridfile',
+                                            'field_id': 'field-aspectgridfile',
+                                            'field-name': 'aspectgridfile',
+                                            'selected_file': data.aspectgridfile,
+                                            'file_format_control': True,
+                                            'format_field_name': 'aspectgridfileformat',
+                                            'label': _('NetCDF data dimension and variable details'),
+                                            'file_format': data.aspectgridfileformat,
+                                            'field_fileformat_id': 'field-aspectgridfileformat',
+                                            'placeholder': _('X:name of x-coordinate;Y:name of y-coordinate;D:name of data variable')
+                                        },
+                                    files=c.ueb_nc_files,
+                                    file_select_errors = errors.aspectgridfile,
+                                    file_format_errors = errors.aspectgridfileformat
+                        %}
+                        {#
 				        <div id="aspect_gridfile" class="control-group control-medium control-select">
                             <div class="controls">
                                 <select id="field-aspectgridfile" name="aspectgridfile" data-module="autocomplete">
-                                    {#<option value="" {% if not data.aspectgridfile %} selected="selected" {% endif %}>{{ _('Select a grid file(2D NetCDF)') }}</option>#}
+                                    <option value="" {% if not data.aspectgridfile %} selected="selected" {% endif %}>{{ _('Select a grid file(2D NetCDF)') }}</option>
                                     {% for file in c.ueb_nc_files %}
                                         <option value="{{ file.id }}" {% if data.aspectgridfile == file.id %} selected="selected" {% endif %}>{{ file.name }}</option>
                                     {% endfor %}
                                 </select>
-                                {% if errors.aspectgridfile %}<span class="error-block">{{ errors.aspectgridfile }}</span>{% endif %}
-                                {#
+                                {% snippet 'snippets/form_field_error.html', field_errors=errors.aspectgridfile %}
+
+
                                 {% set format_attrs={'data-module': 'autocomplete', 'data-module-source': '/api/2/util/resource/format_autocomplete?incomplete=?'} %}
                                     {% call form.input('aspectgridfile', id='field-aspectgridfile', label=_('Select a grid file(2D NetCDF)'), placeholder=_(''), value=data.aspectgridfile, error=errors.aspectgridfile, classes=['control-medium'], attrs=format_attrs) %}
 
                                     {% endcall %}
-                                #}
+
 
                                 {% block form_field_usic_aspect_grid_file_format %}
                                     {{ form.input('aspectgridfileformat', label = _('NetCDF data dimension and variable details'), type='text', value=data.aspectgridfileformat,
@@ -1150,6 +1519,7 @@
                                 {% endblock %}
                             </div>
 				        </div>
+                        #}
 				    {% endblock %}
 				{% endblock %}
 				{% block form_fields_set_site_latitude_options %}
@@ -1158,19 +1528,19 @@
 		    		<input type="radio" name="latitudeoption" id="radLatComputeOption" value="Compute"
                             {% if data.latitudeoption == 'Compute' or not data.latitudeoption %} checked {% endif %} />
 
-		    		<span class="ueb-radio inline">{{ _('Derive from projection information') }}</span> 
+		    		<span class="ueb-radio inline">{{ _('Derive from projection information') }}</span>
 		    		<br />
 
 					<input type="radio" name="latitudeoption" id="radLatConstantOption" value="Constant"
                             {% if data.latitudeoption == 'Constant' %} checked {% endif %} />
 
-					<span class="ueb-radio inline">{{ _('Use a constant value') }}</span> 
-					<br />			
+					<span class="ueb-radio inline">{{ _('Use a constant value') }}</span>
+					<br />
 
 					<input type="radio" name="latitudeoption" id="radLatGridOption" value="Grid"
                             {% if data.latitudeoption == 'Grid' %} checked {% endif %} />
 
-					<span class="ueb-radio inline">{{ _('Use selected grid file') }}</span> 
+					<span class="ueb-radio inline">{{ _('Use selected grid file') }}</span>
 					<br />
 					{% block form_field_latitude %}
 						<div id="lat_constant">
@@ -1180,21 +1550,39 @@
 				    	</div>
 				    {% endblock %}
                     {% block form_field_select_latitude_grid_file %}
+                        {% snippet 'snippets/file_selection_dropdown.html',
+                                    dict={  'div_id': 'lat_gridfile',
+                                            'field_id': 'field-latitudegridfile',
+                                            'field-name': 'latitudegridfile',
+                                            'selected_file': data.latitudegridfile,
+                                            'file_format_control': True,
+                                            'format_field_name': 'latitudegridfileformat',
+                                            'label': _('NetCDF data dimension and variable details'),
+                                            'file_format': data.latitudegridfileformat,
+                                            'field_fileformat_id': 'field-latitudegridfileformat',
+                                            'placeholder': _('X:name of x-coordinate;Y:name of y-coordinate;D:name of data variable')
+                                        },
+                                    files=c.ueb_nc_files,
+                                    file_select_errors = errors.latitudegridfile,
+                                    file_format_errors = errors.latitudegridfileformat
+                        %}
+                        {#
 				        <div id="lat_gridfile" class="control-group control-medium control-select">
                             <div class="controls">
                                 <select id="field-latitudegridfile" name="latitudegridfile" data-module="autocomplete">
-                                    {#<option value="" {% if not data.latitudegridfile %} selected="selected" {% endif %}>{{ _('Select a grid file(2D NetCDF)') }}</option>#}
+                                    <option value="" {% if not data.latitudegridfile %} selected="selected" {% endif %}>{{ _('Select a grid file(2D NetCDF)') }}</option>
                                     {% for file in c.ueb_nc_files %}
                                         <option value="{{ file.id }}" {% if data.latitudegridfile == file.id %} selected="selected" {% endif %}>{{ file.name }}</option>
                                     {% endfor %}
                                 </select>
-                                {% if errors.latitudegridfile %}<span class="error-block">{{ errors.latitudegridfile }}</span>{% endif %}
-                                {#
+                                {% snippet 'snippets/form_field_error.html', field_errors=errors.latitudegridfile %}
+
+
                                 {% set format_attrs={'data-module': 'autocomplete', 'data-module-source': '/api/2/util/resource/format_autocomplete?incomplete=?'} %}
                                     {% call form.input('latitudegridfile', id='field-latitudegridfile', label=_('Select a grid file(2D NetCDF)'), placeholder=_(''), value=data.latitudegridfile, error=errors.latitudegridfile, classes=['control-medium'], attrs=format_attrs) %}
 
                                     {% endcall %}
-                                #}
+
 
                                 {% block form_field_usic_latitude_grid_file_format %}
                                     {{ form.input('latitudegridfileformat', label = _('NetCDF data dimension and variable details'), type='text', value=data.latitudegridfileformat,
@@ -1203,27 +1591,27 @@
                                 {% endblock %}
                             </div>
 				        </div>
+                        #}
 				    {% endblock %}
 				{% endblock %}
 				{% block form_fields_set_site_longitude_options %}
 					<label >Site longitude options</label>
-
 		    		<input type="radio" name="longitudeoption" id="radLonComputeOption" value="Compute"
                             {% if data.longitudeoption == 'Compute' or not data.longitudeoption %} checked {% endif %} />
 
-		    		<span class="ueb-radio inline">{{ _('Derive from projection information') }}</span> 
+		    		<span class="ueb-radio inline">{{ _('Derive from projection information') }}</span>
 		    		<br />
 
 					<input type="radio" name="longitudeoption" id="radLonConstantOption" value="Constant"
                             {% if data.longitudeoption == 'Constant' %} checked {% endif %} />
 
-					<span class="ueb-radio inline">{{ _('Use a constant value') }}</span> 
+					<span class="ueb-radio inline">{{ _('Use a constant value') }}</span>
 					<br />
 
 					<input type="radio" name="longitudeoption" id="radLonGridOption" value="Grid"
                             {% if data.longitudeoption == 'Grid' %} checked {% endif %} />
 
-					<span class="ueb-radio inline">{{ _('Use selected grid file') }}</span> 
+					<span class="ueb-radio inline">{{ _('Use selected grid file') }}</span>
 					<br />
 					{% block form_field_longitude %}
 						<div id="lon_constant">
@@ -1231,23 +1619,41 @@
 				    		id='field-longitude', placeholder= _('0'), error=errors.longitude,
 				    		classes=['control-medium'])}}
 				    	</div>
-				    {% endblock %} 
+				    {% endblock %}
 				    {% block form_field_select_longitude_grid_file %}
+                        {% snippet 'snippets/file_selection_dropdown.html',
+                                    dict={  'div_id': 'lon_gridfile',
+                                            'field_id': 'field-longitudegridfile',
+                                            'field-name': 'longitudegridfile',
+                                            'selected_file': data.longitudegridfile,
+                                            'file_format_control': True,
+                                            'format_field_name': 'longitudegridfileformat',
+                                            'label': _('NetCDF data dimension and variable details'),
+                                            'file_format': data.longitudegridfileformat,
+                                            'field_fileformat_id': 'field-longitudegridfileformat',
+                                            'placeholder': _('X:name of x-coordinate;Y:name of y-coordinate;D:name of data variable')
+                                        },
+                                    files=c.ueb_nc_files,
+                                    file_select_errors = errors.longitudegridfile,
+                                    file_format_errors = errors.longitudegridfileformat
+                        %}
+                        {#
                         <div id="lon_gridfile" class="control-group control-medium control-select">
                             <div class="controls">
                                 <select id="field-longitudegridfile" name="longitudegridfile" data-module="autocomplete">
-                                    {#<option value="" {% if not data.longitudegridfile %} selected="selected" {% endif %}>{{ _('Select a grid file(2D NetCDF)') }}</option>#}
+                                    <option value="" {% if not data.longitudegridfile %} selected="selected" {% endif %}>{{ _('Select a grid file(2D NetCDF)') }}</option>
                                     {% for file in c.ueb_nc_files %}
                                         <option value="{{ file.id }}" {% if data.longitudegridfile == file.id %} selected="selected" {% endif %}>{{ file.name }}</option>
                                     {% endfor %}
                                 </select>
-                                {% if errors.longitudegridfile %}<span class="error-block">{{ errors.longitudegridfile }}</span>{% endif %}
-                                {#
+                                {% snippet 'snippets/form_field_error.html', field_errors=errors.longitudegridfile %}
+
+
                                 {% set format_attrs={'data-module': 'autocomplete', 'data-module-source': '/api/2/util/resource/format_autocomplete?incomplete=?'} %}
                                     {% call form.input('longitudegridfile', id='field-longitudegridfile', label=_('Select a grid file(2D NetCDF)'), placeholder=_(''), value=data.longitudegridfile, error=errors.longitudegridfile, classes=['control-medium'], attrs=format_attrs) %}
 
                                     {% endcall %}
-                                #}
+
 
                                 {% block form_field_usic_longitude_grid_file_format %}
                                     {{ form.input('longitudegridfileformat', label = _('NetCDF data dimension and variable details'), type='text', value=data.latitudegridfileformat,
@@ -1256,10 +1662,11 @@
                                 {% endblock %}
                             </div>
 				        </div>
+                        #}
 				    {% endblock %}
                 {% endblock %}
 			{% endif %}
-			
+
 			{# Site Initial Conditions: Monthly Mean Diurnal Temperature Range #}
 	        {% if c.form_stage == 'stage_7' %}
 	        	{% block ueb_pkg_site_initial_conditions_mean_diurnal_temp_heading %}
@@ -1269,8 +1676,8 @@
 	        	{% set month_labels = {'january': 'January', 'february': 'February', 'march': 'March', 'april': 'April', 'may': 'May', 'june':'June', 'july':'July', 'august':'August', 'september':'September', 'october': 'October', 'november':'November', 'december':'December'} %}
 	        	{% for month in months %}
 	        		{% set block_name = "form_field_" + month %}
-	        		{% set field_id = "field-" + month %}	 
-	        		{% set field_label = month_labels[month] %}       		
+	        		{% set field_id = "field-" + month %}
+	        		{% set field_label = month_labels[month] %}
 	        		{% if month == 'january' %}
 	        			{% set dataValue = data.january %}
 	        			{% set errorValue = errors.january %}
@@ -1300,7 +1707,7 @@
 	        			{% set errorValue = errors.september %}
 	        		{% elif month == 'october' %}
 	        			{% set dataValue = data.october %}
-	        			{% set errorValue = errors.october %}	
+	        			{% set errorValue = errors.october %}
 	        		{% elif month == 'november' %}
 	        			{% set dataValue = data.november %}
 	        			{% set errorValue = errors.november %}
@@ -1311,10 +1718,10 @@
 		        	{% block block_name scoped %}
 			    		{{ form.input( month, label = _(field_label), type='text', value=dataValue,
 			    		id=field_id, placeholder= _('0'), error=errorValue,
-			    		classes=['control-medium'])}}			    		
-					{% endblock %} 
+			    		classes=['control-medium'])}}
+					{% endblock %}
 				{% endfor %}
-				
+
 				{#
 				{% block form_field_feb %}
 		    		{{ form.input('february', label = _('February'), type='text', value=data.february,
@@ -1323,7 +1730,7 @@
 				{% endblock %}
 				#}
 	        {% endif %}
-			
+
 			{# Site Initial Conditions: Monthly Mean Diurnal Temperature Range #}
 	        {% if c.form_stage == 'stage_8' %}
 	        	{% block ueb_pkg_time_series_variables_heading %}
@@ -1334,73 +1741,102 @@
 				{% endblock %}
 				{% block form_fields_set_temperature_options %}
 					<label >Temperature options</label>
-
 		    		<input type="radio" name="taoption" id="radTempComputeOption" value="Compute"
                             {% if data.taoption == 'Compute' or not data.taoption %} checked {% endif %} />
 
-		    		<span class="ueb-radio inline">{{ _('Use selected data source') }}</span> 
+		    		<span class="ueb-radio inline">{{ _('Use selected data source') }}</span>
 		    		<br />
 
 					<input type="radio" name="taoption" id="radTempConstantOption" value="Constant"
                             {% if data.taoption == 'Constant' %} checked {% endif %} />
 
-					<span class="ueb-radio inline">{{ _('Use a constant value') }}</span> 
+					<span class="ueb-radio inline">{{ _('Use a constant value') }}</span>
 					<br />
 
 					<input type="radio" name="taoption" id="radTempTextOption" value="Text"
                             {% if data.taoption == 'Text' %} checked {% endif %} />
 
-					<span class="ueb-radio inline">{{ _('Use selected text file') }}</span> 
+					<span class="ueb-radio inline">{{ _('Use selected text file') }}</span>
 					<br />
 
 					<input type="radio" name="taoption" id="radTempGridOption" value="Grid"
                             {% if data.taoption == 'Grid' %} checked {% endif %} />
 
-					<span class="ueb-radio inline">{{ _('Use selected grid file') }}</span> 
-					<br />			
+					<span class="ueb-radio inline">{{ _('Use selected grid file') }}</span>
+					<br />
 					{% block form_field_temperarture %}
-						<div id="temp_constant">									    		
+						<div id="temp_constant">
 				    		{{ form.input('ta', label = _('Temperature value'), type='text', value=data.ta,
 				    		id='field-ta', placeholder= _('0'), error=errors.ta,
 				    		classes=['control-medium'])}}
 			    		</div>
-				    {% endblock %} 
+				    {% endblock %}
 				    {% block form_field_select_temp_text_file %}
+                        {% snippet 'snippets/file_selection_dropdown.html',
+                                    dict={  'div_id': 'temp_textfile',
+                                            'field_id': 'field-tatextfile',
+                                            'field-name': 'tatextfile',
+                                            'selected_file': data.tatextfile,
+                                            'file_format_control': False
+                                        },
+                                    files=c.ueb_dat_files,
+                                    file_select_errors=errors.tatextfile
+                        %}
+                        {#
 				    	<div id="temp_textfile" class="control-group control-medium control-select">
                             <div class="controls">
                                 <select id="field-tatextfile" name="tatextfile" data-module="autocomplete">
-                                    {#<option value="" {% if not data.tatextfile %} selected="selected" {% endif %}>{{ _('Select a text file...') }}</option>#}
+                                    <option value="" {% if not data.tatextfile %} selected="selected" {% endif %}>{{ _('Select a text file...') }}</option>
                                     {% for file in c.ueb_dat_files %}
                                         <option value="{{ file.id }}" {% if data.tatextfile == file.id %} selected="selected" {% endif %}>{{ file.name }}</option>
                                     {% endfor %}
                                 </select>
-                                {% if errors.tatextfile %}<span class="error-block">{{ errors.tatextfile }}</span>{% endif %}
+                                {% snippet 'snippets/form_field_error.html', field_errors=errors.tatextfile %}
 
-                                {#
+
                                 {% set format_attrs={'data-module': 'autocomplete', 'data-module-source': '/api/2/util/resource/format_autocomplete?incomplete=?'} %}
                                     {% call form.input('tatextfile', id='field-tatextfile', label=_('Select a text file'), placeholder=_(''), value=data.tatextfile, error=errors.tatextfile, classes=['control-medium'], attrs=format_attrs) %}
 
                                     {% endcall %}
-                                #}
+
                             </div>
 	    				</div>
+                        #}
 	    			{% endblock %}
                     {% block form_field_select_temp_grid_file %}
+                        {% snippet 'snippets/file_selection_dropdown.html',
+                                    dict={  'div_id': 'temp_gridfile',
+                                            'field_id': 'field-tagridfile',
+                                            'field-name': 'tagridfile',
+                                            'selected_file': data.tagridfile,
+                                            'file_format_control': True,
+                                            'format_field_name': 'tagridfileformat',
+                                            'label': _('NetCDF data dimension and variable details'),
+                                            'file_format': data.tagridfileformat,
+                                            'field_fileformat_id': 'field-tagridfileformat',
+                                            'placeholder': _('X:name of x-coordinate;Y:name of y-coordinate;D:name of data variable')
+                                        },
+                                    files=c.ueb_nc_files,
+                                    file_select_errors = errors.tagridfile,
+                                    file_format_errors = errors.tagridfileformat
+                        %}
+                        {#
 	    			    <div id="temp_gridfile" class="control-group control-medium control-select">
                             <div class="controls">
                                 <select id="field-tagridfile" name="tagridfile" data-module="autocomplete">
-                                    {#<option value="" {% if not data.tagridfile %} selected="selected" {% endif %}>{{ _('Select a grid file(2D NetCDF)') }}</option>#}
+                                    <option value="" {% if not data.tagridfile %} selected="selected" {% endif %}>{{ _('Select a grid file(2D NetCDF)') }}</option>
                                     {% for file in c.ueb_nc_files %}
                                         <option value="{{ file.id }}" {% if data.tagridfile == file.id %} selected="selected" {% endif %}>{{ file.name }}</option>
                                     {% endfor %}
                                 </select>
-                                {% if errors.tagridfile %}<span class="error-block">{{ errors.tagridfile }}</span>{% endif %}
-                                {#
+                                {% snippet 'snippets/form_field_error.html', field_errors=errors.tagridfile %}
+
+
                                 {% set format_attrs={'data-module': 'autocomplete', 'data-module-source': '/api/2/util/resource/format_autocomplete?incomplete=?'} %}
                                     {% call form.input('tagridfile', id='field-tempgridfile', label=_('Select a grid file(2D NetCDF)'), placeholder=_(''), value=data.tagridfile, error=errors.tagridfile, classes=['control-medium'], attrs=format_attrs) %}
 
                                     {% endcall %}
-                                #}
+
 
                                 {% block form_field_temp_grid_file_format %}
                                     {{ form.input('tagridfileformat', label = _('NetCDF data dimension and variable details'), type='text', value=data.tagridfileformat,
@@ -1409,79 +1845,109 @@
                                 {% endblock %}
                             </div>
 				        </div>
+                        #}
 				    {% endblock %}
                 {% endblock %}
-				<br />				
+				<br />
 				{% block form_fields_set_precipitation_options %}
 					<label>Precipitation options</label>
 					<input type="radio" name="precoption" id="radPrecComputeOption" value="Compute"
                             {% if data.precoption == 'Compute' or not data.precoption %} checked {% endif %} />
 
-		    		<span class="ueb-radio inline">{{ _('Use selected data source') }}</span> 
+		    		<span class="ueb-radio inline">{{ _('Use selected data source') }}</span>
 		    		<br />
 
 					<input type="radio" name="precoption" id="radPrecConstantOption" value="Constant"
                             {% if data.precoption == 'Constant' %} checked {% endif %} />
 
-					<span class="ueb-radio inline">{{ _('Use a constant value') }}</span> 
+					<span class="ueb-radio inline">{{ _('Use a constant value') }}</span>
 					<br />
 
 					<input type="radio" name="precoption" id="radPrecTextOption" value="Text"
                         {% if data.precoption == 'Text' %} checked {% endif %} />
 
-					<span class="ueb-radio inline">{{ _('Use selected text file') }}</span> 
+					<span class="ueb-radio inline">{{ _('Use selected text file') }}</span>
 					<br />
-					{% if data.precoption == 'Grid' %} 
+					{% if data.precoption == 'Grid' %}
 						<input type="radio" name="precoption" id="radPrecGridOption" value="Grid" checked >
 					{% else %}
 						<input type="radio" name="precoption" id="radPrecGridOption" value="Grid" >
 					{% endif %}
-					<span class="ueb-radio inline">{{ _('Use selected grid file') }}</span> 
+					<span class="ueb-radio inline">{{ _('Use selected grid file') }}</span>
 					<br />
 					{% block form_field_precipitation %}
-						<div id="prec_constant">							
+						<div id="prec_constant">
 				    		{{ form.input('prec', label = _('Precipitation value (specify unit here)'), type='text', value=data.prec,
 				    		id='field-prec', placeholder= _('0'), error=errors.prec,
 				    		classes=['control-medium'])}}
 			    		</div>
-				    {% endblock %} 
+				    {% endblock %}
 				    {% block form_field_select_prec_text_file %}
+                        {% snippet 'snippets/file_selection_dropdown.html',
+                                    dict={  'div_id': 'prec_textfile',
+                                            'field_id': 'field-prectextfile',
+                                            'field-name': 'prectextfile',
+                                            'selected_file': data.prectextfile,
+                                            'file_format_control': False
+                                        },
+                                    files=c.ueb_dat_files,
+                                    file_select_errors=errors.prectextfile
+                        %}
+                        {#
 					    <div id="prec_textfile" class="control-group control-medium control-select">
                             <div class="controls">
                                 <select id="field-prectextfile" name="prectextfile" data-module="autocomplete">
-                                    {#<option value="" {% if not data.prectextfile %} selected="selected" {% endif %}>{{ _('Select a text file...') }}</option>#}
+                                    <option value="" {% if not data.prectextfile %} selected="selected" {% endif %}>{{ _('Select a text file...') }}</option>
                                     {% for file in c.ueb_dat_files %}
                                         <option value="{{ file.id }}" {% if data.prectextfile == file.id %} selected="selected" {% endif %}>{{ file.name }}</option>
                                     {% endfor %}
                                 </select>
-                                {% if errors.prectextfile %}<span class="error-block">{{ errors.prectextfile }}</span>{% endif %}
+                                {% snippet 'snippets/form_field_error.html', field_errors=errors.prectextfile %}
 
-                                {#
+
                                 {% set format_attrs={'data-module': 'autocomplete', 'data-module-source': '/api/2/util/resource/format_autocomplete?incomplete=?'} %}
                                     {% call form.input('prectextfile', id='field-prectextfile', label=_('Select a text file'), placeholder=_(''), value=data.prectextfile, error=errors.prectextfile, classes=['control-medium'], attrs=format_attrs) %}
 
                                     {% endcall %}
-                                #}
+
                             </div>
 		    			</div>
+                        #}
 	    			{% endblock %}
                     {% block form_field_select_prec_grid_file %}
+                        {% snippet 'snippets/file_selection_dropdown.html',
+                                    dict={  'div_id': 'prec_gridfile',
+                                            'field_id': 'field-precgridfile',
+                                            'field-name': 'precgridfile',
+                                            'selected_file': data.precgridfile,
+                                            'file_format_control': True,
+                                            'format_field_name': 'precgridfileformat',
+                                            'label': _('NetCDF data dimension and variable details'),
+                                            'file_format': data.precgridfileformat,
+                                            'field_fileformat_id': 'field-precgridfileformat',
+                                            'placeholder': _('X:name of x-coordinate;Y:name of y-coordinate;D:name of data variable')
+                                        },
+                                    files=c.ueb_nc_files,
+                                    file_select_errors = errors.precgridfile,
+                                    file_format_errors = errors.precgridfileformat
+                        %}
+                        {#
 	    			    <div id="prec_gridfile" class="control-group control-medium control-select">
                             <div class="controls">
                                 <select id="field-precgridfile" name="precgridfile" data-module="autocomplete">
-                                    {#<option value="" {% if not data.precgridfile %} selected="selected" {% endif %}>{{ _('Select a grid file(2D NetCDF)') }}</option>#}
+                                    <option value="" {% if not data.precgridfile %} selected="selected" {% endif %}>{{ _('Select a grid file(2D NetCDF)') }}</option>
                                     {% for file in c.ueb_nc_files %}
                                         <option value="{{ file.id }}" {% if data.precgridfile == file.id %} selected="selected" {% endif %}>{{ file.name }}</option>
                                     {% endfor %}
                                 </select>
-                                {% if errors.precgridfile %}<span class="error-block">{{ errors.precgridfile }}</span>{% endif %}
+                                {% snippet 'snippets/form_field_error.html', field_errors=errors.precgridfile %}
 
-                                {#
+
                                     {% set format_attrs={'data-module': 'autocomplete', 'data-module-source': '/api/2/util/resource/format_autocomplete?incomplete=?'} %}
                                     {% call form.input('precgridfile', id='field-precgridfile', label=_('Select a grid file(2D NetCDF)'), placeholder=_(''), value=data.precgridfile, error=errors.precgridfile, classes=['control-medium'], attrs=format_attrs) %}
 
                                     {% endcall %}
-                                #}
+
 
                                 {% block form_field_prec_grid_file_format %}
                                     {{ form.input('precgridfileformat', label = _('NetCDF data dimension and variable details'), type='text', value=data.precgridfileformat,
@@ -1490,78 +1956,108 @@
                                 {% endblock %}
                             </div>
 				        </div>
+                        #}
 				    {% endblock %}
                 {% endblock %}
 				<br />
 				{% block form_fields_set_wind_speed_options %}
 					<label >Wind speed options</label>
-
 		    		<input type="radio" name="voption" id="radWindComputeOption" value="Compute"
                             {% if data.voption == 'Compute' or not data.voption %} checked {% endif %} />
 
-		    		<span class="ueb-radio inline">{{ _('Use selected data source') }}</span> 
+		    		<span class="ueb-radio inline">{{ _('Use selected data source') }}</span>
 		    		<br />
 
 					<input type="radio" name="voption" id="radWindConstantOption" value="Constant"
                             {% if data.voption == 'Constant' %} checked {% endif %} />
 
-					<span class="ueb-radio inline">{{ _('Use a constant value') }}</span> 
+					<span class="ueb-radio inline">{{ _('Use a constant value') }}</span>
 					<br />
 
 					<input type="radio" name="voption" id="radWindTextOption" value="Text"
                             {% if data.voption == 'Text' %} checked {% endif %} />
 
-					<span class="ueb-radio inline">{{ _('Use selected text file') }}</span> 
+					<span class="ueb-radio inline">{{ _('Use selected text file') }}</span>
 					<br />
 
 					<input type="radio" name="voption" id="radWindGridOption" value="Grid"
                             {% if data.voption == 'Grid' %} checked {% endif %} />
 
-					<span class="ueb-radio inline">{{ _('Use selected grid file') }}</span> 
+					<span class="ueb-radio inline">{{ _('Use selected grid file') }}</span>
 					<br />
 					{% block form_field_wind_speed %}
-						<div id="wind_constant">							
+						<div id="wind_constant">
 				    		{{ form.input('v', label = _('Wind speed value (specify unit here)'), type='text', value=data.v,
 				    		id='field-v', placeholder= _('0'), error=errors.v,
 				    		classes=['control-medium'])}}
 				    	</div>
-				    {% endblock %} 
-				    {% block form_field_select_wind_text_file %}	
+				    {% endblock %}
+				    {% block form_field_select_wind_text_file %}
+                        {% snippet 'snippets/file_selection_dropdown.html',
+                                    dict={  'div_id': 'wind_textfile',
+                                            'field_id': 'field-vtextfile',
+                                            'field-name': 'vtextfile',
+                                            'selected_file': data.vtextfile,
+                                            'file_format_control': False
+                                        },
+                                    files=c.ueb_dat_files,
+                                    file_select_errors=errors.vtextfile
+                        %}
+                        {#
 					    <div id="wind_textfile" class="control-group control-medium control-select">
-                            <div class="controls">>
+                            <div class="controls">
                                 <select id="field-vtextfile" name="vtextfile" data-module="autocomplete">
-                                    {#<option value="" {% if not data.vtextfile %} selected="selected" {% endif %}>{{ _('Select a text file...') }}</option>#}
+                                    <option value="" {% if not data.vtextfile %} selected="selected" {% endif %}>{{ _('Select a text file...') }}</option>
                                     {% for file in c.ueb_dat_files %}
                                         <option value="{{ file.id }}" {% if data.vtextfile == file.id %} selected="selected" {% endif %}>{{ file.name }}</option>
                                     {% endfor %}
                                 </select>
-                                {% if errors.vtextfile %}<span class="error-block">{{ errors.vtextfile }}</span>{% endif %}
+                                {% snippet 'snippets/form_field_error.html', field_errors=errors.vtextfile %}
 
-                                {#
+
                                 {% set format_attrs={'data-module': 'autocomplete', 'data-module-source': '/api/2/util/resource/format_autocomplete?incomplete=?'} %}
                                     {% call form.input('vtextfile', id='field-vtextfile', label=_('Select a text file'), placeholder=_(''), value=data.vtextfile, error=errors.vtextfile, classes=['control-medium'], attrs=format_attrs) %}
 
                                     {% endcall %}
-                                #}
+
                             </div>
 	    				</div>
+                        #}
 	    			{% endblock %}
                     {% block form_field_select_wind_grid_file %}
+                        {% snippet 'snippets/file_selection_dropdown.html',
+                                    dict={  'div_id': 'wind_gridfile',
+                                            'field_id': 'field-vgridfile',
+                                            'field-name': 'vgridfile',
+                                            'selected_file': data.vgridfile,
+                                            'file_format_control': True,
+                                            'format_field_name': 'vgridfileformat',
+                                            'label': _('NetCDF data dimension and variable details'),
+                                            'file_format': data.vgridfileformat,
+                                            'field_fileformat_id': 'field-vgridfileformat',
+                                            'placeholder': _('X:name of x-coordinate;Y:name of y-coordinate;D:name of data variable')
+                                        },
+                                    files=c.ueb_nc_files,
+                                    file_select_errors = errors.vgridfile,
+                                    file_format_errors = errors.vgridfileformat
+                        %}
+                        {#
 	    			    <div id="wind_gridfile" class="control-group control-medium control-select">
                             <div class="controls">
                                 <select id="field-vgridfile" name="vgridfile" data-module="autocomplete">
-                                    {#<option value="" {% if not data.vgridfile %} selected="selected" {% endif %}>{{ _('Select a grid file(2D NetCDF)') }}</option>#}
+                                    <option value="" {% if not data.vgridfile %} selected="selected" {% endif %}>{{ _('Select a grid file(2D NetCDF)') }}</option>
                                     {% for file in c.ueb_nc_files %}
                                         <option value="{{ file.id }}" {% if data.vgridfile == file.id %} selected="selected" {% endif %}>{{ file.name }}</option>
                                     {% endfor %}
                                 </select>
-                                {% if errors.vgridfile %}<span class="error-block">{{ errors.vgridfile }}</span>{% endif %}
-                                {#
+                                {% snippet 'snippets/form_field_error.html', field_errors=errors.vgridfile %}
+
+
                                 {% set format_attrs={'data-module': 'autocomplete', 'data-module-source': '/api/2/util/resource/format_autocomplete?incomplete=?'} %}
                                     {% call form.input('vgridfile', id='field-vgridfile', label=_('Select a grid file(2D NetCDF)'), placeholder=_(''), value=data.vgridfile, error=errors.vgridfile, classes=['control-medium'], attrs=format_attrs) %}
 
                                     {% endcall %}
-                                #}
+
 
                                 {% block form_field_wind_grid_file_format %}
                                     {{ form.input('vgridfileformat', label = _('NetCDF data dimension and variable details'), type='text', value=data.vgridfileformat,
@@ -1570,6 +2066,7 @@
                                 {% endblock %}
                             </div>
 				        </div>
+                        #}
 				    {% endblock %}
                 {% endblock %}
 				<br />
@@ -1578,67 +2075,95 @@
 					<input type="radio" name="rhoption" id="radRhComputeOption" value="Compute"
                             {% if data.rhoption == 'Compute' or not data.rhoption %} checked {% endif %} />
 
-		    		<span class="ueb-radio inline">{{ _('Use selected data source') }}</span> 
+		    		<span class="ueb-radio inline">{{ _('Use selected data source') }}</span>
 		    		<br />
 					<input type="radio" name="rhoption" id="radRhConstantOption" value="Constant"
                             {% if data.rhoption == 'Constant' %} checked {% endif %} />
 
-					<span class="ueb-radio inline">{{ _('Use a constant value') }}</span> 
+					<span class="ueb-radio inline">{{ _('Use a constant value') }}</span>
 					<br />
 					<input type="radio" name="rhoption" id="radRhTextOption" value="Text"
                             {% if data.rhoption == 'Text' %} checked {% endif %} />
 
-					<span class="ueb-radio inline">{{ _('Use selected text file') }}</span> 
+					<span class="ueb-radio inline">{{ _('Use selected text file') }}</span>
 					<br />
 					<input type="radio" name="rhoption" id="radRhGridOption" value="Grid"
                             {% if data.rhoption == 'Grid' %} checked {% endif %} />
 
-					<span class="ueb-radio inline">{{ _('Use selected grid file') }}</span> 
+					<span class="ueb-radio inline">{{ _('Use selected grid file') }}</span>
 					<br />
 					{% block form_field_rh %}
-						<div id="rh_constant">							
+						<div id="rh_constant">
 				    		{{ form.input('rh', label = _('Relative humidity value (decimal value)'), type='text', value=data.rh,
 				    		id='field-rh', placeholder= _('0'), error=errors.rh,
 				    		classes=['control-medium'])}}
 			    		</div>
-				    {% endblock %} 
-				    {% block form_field_select_rh_text_file %}	
+				    {% endblock %}
+				    {% block form_field_select_rh_text_file %}
+                        {% snippet 'snippets/file_selection_dropdown.html',
+                                    dict={  'div_id': 'rh_textfile',
+                                            'field_id': 'field-rhtextfile',
+                                            'field-name': 'rhtextfile',
+                                            'selected_file': data.rhtextfile,
+                                            'file_format_control': False
+                                        },
+                                    files=c.ueb_dat_files,
+                                    file_select_errors=errors.rhtextfile
+                        %}
+                        {#
 					    <div id="rh_textfile" class="control-group control-medium control-select">
                             <div class="controls">
                                 <select id="field-rhtextfile" name="rhtextfile" data-module="autocomplete">
-                                    {#<option value="" {% if not data.rhtextfile %} selected="selected" {% endif %}>{{ _('Select a text file...') }}</option>#}
+                                    <option value="" {% if not data.rhtextfile %} selected="selected" {% endif %}>{{ _('Select a text file...') }}</option>
                                     {% for file in c.ueb_dat_files %}
                                         <option value="{{ file.id }}" {% if data.rhtextfile == file.id %} selected="selected" {% endif %}>{{ file.name }}</option>
                                     {% endfor %}
                                 </select>
-                                {% if errors.rhtextfile %}<span class="error-block">{{ errors.rhtextfile }}</span>{% endif %}
+                                {% snippet 'snippets/form_field_error.html', field_errors=errors.rhtextfile %}
 
-                            {#
+
 			    			    {% set format_attrs={'data-module': 'autocomplete', 'data-module-source': '/api/2/util/resource/format_autocomplete?incomplete=?'} %}
 			    				{% call form.input('rhtextfile', id='field-rhtextfile', label=_('Select a text file'), placeholder=_(''), value=data.rhtextfile, error=errors.rhtextfile, classes=['control-medium'], attrs=format_attrs) %}
-				    				
+
 			    				{% endcall %}
-                            #}
+
                             </div>
 	    				</div>
+                        #}
 	    			{% endblock %}
 	    			{% block form_field_select_rh_grid_file %}
+                        {% snippet 'snippets/file_selection_dropdown.html',
+                                    dict={  'div_id': 'rh_gridfile',
+                                            'field_id': 'field-rhgridfile',
+                                            'field-name': 'rhgridfile',
+                                            'selected_file': data.rhgridfile,
+                                            'file_format_control': True,
+                                            'format_field_name': 'rhgridfileformat',
+                                            'label': _('NetCDF data dimension and variable details'),
+                                            'file_format': data.rhgridfileformat,
+                                            'field_fileformat_id': 'field-rhgridfileformat',
+                                            'placeholder': _('X:name of x-coordinate;Y:name of y-coordinate;D:name of data variable')
+                                        },
+                                    files=c.ueb_nc_files,
+                                    file_select_errors = errors.rhgridfile,
+                                    file_format_errors = errors.rhgridfileformat
+                        %}
+                        {#
                         <div id="rh_gridfile" class="control-group control-medium control-select">
                             <div class="controls">
                                 <select id="field-rhgridfile" name="rhgridfile" data-module="autocomplete">
-                                    {#<option value="" {% if not data.rhgridfile %} selected="selected" {% endif %}>{{ _('Select a grid file(2D NetCDF)') }}</option>#}
+                                    <option value="" {% if not data.rhgridfile %} selected="selected" {% endif %}>{{ _('Select a grid file(2D NetCDF)') }}</option>
                                     {% for file in c.ueb_nc_files %}
                                         <option value="{{ file.id }}" {% if data.rhgridfile == file.id %} selected="selected" {% endif %}>{{ file.name }}</option>
                                     {% endfor %}
                                 </select>
-                                {% if errors.rhgridfile %}<span class="error-block">{{ errors.rhgridfile }}</span>{% endif %}
+                                {% snippet 'snippets/form_field_error.html', field_errors=errors.rhgridfile %}
 
-                                {#
                                 {% set format_attrs={'data-module': 'autocomplete', 'data-module-source': '/api/2/util/resource/format_autocomplete?incomplete=?'} %}
                                     {% call form.input('rhgridfile', id='field-rhgridfile', label=_('Select a grid file(2D NetCDF)'), placeholder=_(''), value=data.rhgridfile, error=errors.rhgridfile, classes=['control-medium'], attrs=format_attrs) %}
 
                                     {% endcall %}
-                                #}
+
 
                                 {% block form_field_rh_grid_file_format %}
                                     {{ form.input('rhgridfileformat', label = _('NetCDF data dimension and variable details'), type='text', value=data.rhgridfileformat,
@@ -1647,6 +2172,7 @@
                                 {% endblock %}
                             </div>
 				        </div>
+                        #}
 				    {% endblock %}
                 {% endblock %}
 				<br />
@@ -1656,70 +2182,99 @@
 		    		<input type="radio" name="snowalboption" id="radSnowalbComputeOption"  value="Compute"
                             {% if data.snowalboption == 'Compute' or not data.snowalboption %} checked {% endif %} />
 
-		    		<span class="ueb-radio inline">{{ _('Use selected data source') }}</span> 
+		    		<span class="ueb-radio inline">{{ _('Use selected data source') }}</span>
 		    		<br />
 
 					<input type="radio" name="snowalboption" id="radSnowalbConstantOption" value="Constant"
                             {% if data.snowalboption == 'Constant' %} checked {% endif %} />
 
-					<span class="ueb-radio inline">{{ _('Use a constant value') }}</span> 
+					<span class="ueb-radio inline">{{ _('Use a constant value') }}</span>
 					<br />
 
 					<input type="radio" name="snowalboption" id="radSnowalbTextOption" value="Text"
                             {% if data.snowalboption == 'Text' %} checked {% endif %} />
 
-					<span class="ueb-radio inline">{{ _('Use selected text file') }}</span> 
+					<span class="ueb-radio inline">{{ _('Use selected text file') }}</span>
 					<br />
 
 					<input type="radio" name="snowalboption" id="radSnowalbGridOption" value="Grid"
                             {% if data.snowalboption == 'Grid' %} checked {% endif %} />
 
-					<span class="ueb-radio inline">{{ _('Use selected grid file') }}</span> 
+					<span class="ueb-radio inline">{{ _('Use selected grid file') }}</span>
 					<br />
 					{% block form_field_snowalb %}
-						<div id="snowalb_constant">							
+						<div id="snowalb_constant">
 				    		{{ form.input('snowalb', label = _('Snow albedo value'), type='text', value=data.snowalb,
 				    		id='field-snowalb', placeholder= _('0'), error=errors.snowalb,
 				    		classes=['control-medium'])}}
 			    		</div>
-				    {% endblock %} 
-				    {% block form_field_select_snowalb_text_file %}	
+				    {% endblock %}
+				    {% block form_field_select_snowalb_text_file %}
+                        {% snippet 'snippets/file_selection_dropdown.html',
+                                    dict={  'div_id': 'snowalb_textfile',
+                                            'field_id': 'field-snowalbtextfile',
+                                            'field-name': 'snowalbtextfile',
+                                            'selected_file': data.snowalbtextfile,
+                                            'file_format_control': False
+                                        },
+                                    files=c.ueb_dat_files,
+                                    file_select_errors=errors.snowalbtextfile
+                        %}
+                        {#
 					    <div id="snowalb_textfile" class="control-group control-medium control-select">
                             <div class="controls">
                                 <select id="field-snowalbtextfile" name="snowalbtextfile" data-module="autocomplete">
-                                    {#<option value="" {% if not data.snowalbtextfile %} selected="selected" {% endif %}>{{ _('Select a text file...') }}</option>#}
+                                    <option value="" {% if not data.snowalbtextfile %} selected="selected" {% endif %}>{{ _('Select a text file...') }}</option>
                                     {% for file in c.ueb_dat_files %}
                                         <option value="{{ file.id }}" {% if data.snowalbtextfile == file.id %} selected="selected" {% endif %}>{{ file.name }}</option>
                                     {% endfor %}
                                 </select>
-                                {% if errors.snowalbtextfile %}<span class="error-block">{{ errors.snowalbtextfile }}</span>{% endif %}
+                                {% snippet 'snippets/form_field_error.html', field_errors=errors.snowalbtextfile %}
 
-                                {#
+
                                 {% set format_attrs={'data-module': 'autocomplete', 'data-module-source': '/api/2/util/resource/format_autocomplete?incomplete=?'} %}
                                     {% call form.input('snowalbtextfile', id='field-snowalbtextfile', label=_('Select a text file'), placeholder=_(''), value=data.snowalbtextfile, error=errors.snowalbtextfile, classes=['control-medium'], attrs=format_attrs) %}
 
                                     {% endcall %}
-                                #}
+
                             </div>
 	    				</div>
+                        #}
 	    			{% endblock %}
                     {% block form_field_select_snowalb_grid_file %}
+                        {% snippet 'snippets/file_selection_dropdown.html',
+                                    dict={  'div_id': 'snowalb_gridfile',
+                                            'field_id': 'field-snowalbgridfile',
+                                            'field-name': 'snowalbgridfile',
+                                            'selected_file': data.snowalbgridfile,
+                                            'file_format_control': True,
+                                            'format_field_name': 'snowalbgridfileformat',
+                                            'label': _('NetCDF data dimension and variable details'),
+                                            'file_format': data.snowalbgridfileformat,
+                                            'field_fileformat_id': 'field-snowalbgridfileformat',
+                                            'placeholder': _('X:name of x-coordinate;Y:name of y-coordinate;D:name of data variable')
+                                        },
+                                    files=c.ueb_nc_files,
+                                    file_select_errors = errors.snowalbgridfile,
+                                    file_format_errors = errors.snowalbgridfileformat
+                        %}
+                        {#
 	    			    <div id="snowalb_gridfile" class="control-group control-medium control-select">
                             <div class="controls">
                                 <select id="field-snowalbgridfile" name="snowalbgridfile" data-module="autocomplete">
-                                    {#<option value="" {% if not data.snowalbgridfile %} selected="selected" {% endif %}>{{ _('Select a grid file(2D NetCDF)') }}</option>#}
+                                    <option value="" {% if not data.snowalbgridfile %} selected="selected" {% endif %}>{{ _('Select a grid file(2D NetCDF)') }}</option>
                                     {% for file in c.ueb_nc_files %}
                                         <option value="{{ file.id }}" {% if data.snowalbgridfile == file.id %} selected="selected" {% endif %}>{{ file.name }}</option>
                                     {% endfor %}
                                 </select>
-                                {% if errors.snowalbgridfile %}<span class="error-block">{{ errors.snowalbgridfile }}</span>{% endif %}
+                                {% snippet 'snippets/form_field_error.html', field_errors=errors.snowalbgridfile %}
 
-                                {#
+
                                 {% set format_attrs={'data-module': 'autocomplete', 'data-module-source': '/api/2/util/resource/format_autocomplete?incomplete=?'} %}
                                     {% call form.input('snowalbgridfile', id='field-snowalbgridfile', label=_('Select a grid file(2D NetCDF)'), placeholder=_(''), value=data.snowalbgridfile, error=errors.snowalbgridfile, classes=['control-medium'], attrs=format_attrs) %}
 
                                     {% endcall %}
-                                #}
+
 
                                 {% block form_field_snowalb_grid_file_format %}
                                     {{ form.input('snowalbgridfileformat', label = _('NetCDF data dimension and variable details'), type='text', value=data.snowalbgridfileformat,
@@ -1728,6 +2283,7 @@
                                 {% endblock %}
                             </div>
 				        </div>
+                        #}
 				    {% endblock %}
                 {% endblock %}
 				<br />
@@ -1737,62 +2293,91 @@
 		    		<input type="radio" name="qgoption" id="radQgConstantOption" value="Constant"
                             {% if data.qgoption == 'Constant' or not data.qgoption %} checked {% endif %} />
 
-		    		<span class="ueb-radio inline">{{ _('Use a constant value') }}</span> 
+		    		<span class="ueb-radio inline">{{ _('Use a constant value') }}</span>
 		    		<br />
 					<input type="radio" name="qgoption" id="radQgTextOption" value="Text"
                             {% if data.qgoption == 'Text' %} checked {% endif %} />
 
-					<span class="ueb-radio inline">{{ _('Use selected text file') }}</span> 
+					<span class="ueb-radio inline">{{ _('Use selected text file') }}</span>
 					<br />
 					<input type="radio" name="qgoption" id="radQgGridOption" value="Grid"
                             {% if data.qgoption == 'Grid' %} checked {% endif %} />
 
-					<span class="ueb-radio inline">{{ _('Use selected grid file') }}</span> 
+					<span class="ueb-radio inline">{{ _('Use selected grid file') }}</span>
 					<br />
 					{% block form_field_gq %}
-						<div id="qg_constant">							
+						<div id="qg_constant">
 				    		{{ form.input('qg', label = _('Ground heat flux value (kJ/m2/hr)'), type='text', value=data.qg,
 				    		id='field-qg', placeholder= _('0'), error=errors.gq,
 				    		classes=['control-medium'])}}
 			    		</div>
-				    {% endblock %} 
-				    {% block form_field_select_qg_text_file %}	
+				    {% endblock %}
+				    {% block form_field_select_qg_text_file %}
+                        {% snippet 'snippets/file_selection_dropdown.html',
+                                    dict={  'div_id': 'qg_textfile',
+                                            'field_id': 'field-qgtextfile',
+                                            'field-name': 'qgtextfile',
+                                            'selected_file': data.qgtextfile,
+                                            'file_format_control': False
+                                        },
+                                    files=c.ueb_dat_files,
+                                    file_select_errors=errors.qgtextfile
+                        %}
+                        {#
 					    <div id="qg_textfile" class="control-group control-medium control-select">
                             <div class="controls">
                                 <select id="field-qgtextfile" name="qgtextfile" data-module="autocomplete">
-                                    {#<option value="" {% if not data.qgtextfile %} selected="selected" {% endif %}>{{ _('Select a text file...') }}</option>#}
+                                    <option value="" {% if not data.qgtextfile %} selected="selected" {% endif %}>{{ _('Select a text file...') }}</option>
                                     {% for file in c.ueb_dat_files %}
                                         <option value="{{ file.id }}" {% if data.qgtextfile == file.id %} selected="selected" {% endif %}>{{ file.name }}</option>
                                     {% endfor %}
                                 </select>
-                                {% if errors.qgtextfile %}<span class="error-block">{{ errors.qgtextfile }}</span>{% endif %}
+                                {% snippet 'snippets/form_field_error.html', field_errors=errors.qgtextfile %}
 
-                                {#
+
                                 {% set format_attrs={'data-module': 'autocomplete', 'data-module-source': '/api/2/util/resource/format_autocomplete?incomplete=?'} %}
                                     {% call form.input('qgtextfile', id='field-qgtextfile', label=_('Select a text file'), placeholder=_(''), value=data.gqtextfile, error=errors.gqtextfile, classes=['control-medium'], attrs=format_attrs) %}
 
-                                    {% endcall %}
-                                #}
+                                {% endcall %}
+
                             </div>
 	    				</div>
+                        #}
 	    			{% endblock %}
                     {% block form_field_select_gq_grid_file %}
+                        {% snippet 'snippets/file_selection_dropdown.html',
+                                    dict={  'div_id': 'qg_gridfile',
+                                            'field_id': 'field-qggridfile',
+                                            'field-name': 'qggridfile',
+                                            'selected_file': data.qggridfile,
+                                            'file_format_control': True,
+                                            'format_field_name': 'qggridfileformat',
+                                            'label': _('NetCDF data dimension and variable details'),
+                                            'file_format': data.qggridfileformat,
+                                            'field_fileformat_id': 'field-qggridfileformat',
+                                            'placeholder': _('X:name of x-coordinate;Y:name of y-coordinate;D:name of data variable')
+                                        },
+                                    files=c.ueb_nc_files,
+                                    file_select_errors = errors.qggridfile,
+                                    file_format_errors = errors.qggridfileformat
+                        %}
+                        {#
 	    			    <div id="qg_gridfile" class="control-group control-medium control-select">
                             <div class="controls">
                                 <select id="field-qggridfile" name="qggridfile" data-module="autocomplete">
-                                    {#<option value="" {% if not data.qggridfile %} selected="selected" {% endif %}>{{ _('Select a grid file(2D NetCDF)') }}</option>#}
+                                    <option value="" {% if not data.qggridfile %} selected="selected" {% endif %}>{{ _('Select a grid file(2D NetCDF)') }}</option>
                                     {% for file in c.ueb_nc_files %}
                                         <option value="{{ file.id }}" {% if data.qggridfile == file.id %} selected="selected" {% endif %}>{{ file.name }}</option>
                                     {% endfor %}
                                 </select>
-                                {% if errors.qggridfile %}<span class="error-block">{{ errors.qggridfile }}</span>{% endif %}
+                                {% snippet 'snippets/form_field_error.html', field_errors=errors.qggridfile %}
 
-                                {#
+
                                 {% set format_attrs={'data-module': 'autocomplete', 'data-module-source': '/api/2/util/resource/format_autocomplete?incomplete=?'} %}
                                     {% call form.input('qggridfile', id='field-qggridfile', label=_('Select a grid file(2D NetCDF)'), placeholder=_(''), value=data.qggridfile, error=errors.qgridfile, classes=['control-medium'], attrs=format_attrs) %}
 
                                     {% endcall %}
-                                #}
+
 
                                 {% block form_field_qg_grid_file_format %}
                                     {{ form.input('qggridfileformat', label = _('NetCDF data dimension and variable details'), type='text', value=data.qggridfileformat,
@@ -1801,10 +2386,11 @@
                                 {% endblock %}
                             </div>
 				        </div>
+                        #}
 				    {% endblock %}
                 {% endblock %}
 	        {% endif %}
-	        
+
 	        {# Output Variables #}
 	        {% if c.form_stage == 'stage_9' %}
 	        	{% block ueb_pkg_output_variables_heading %}
@@ -1812,37 +2398,43 @@
 		    	{% endblock %}
 	        	{% block form_fields_set_output_control_file_options %}
 					<label >Use default output control file</label>
-
 		    		<input type="radio" name="outputControlFileOption" id="radDefaultOutputControlFileYes" value="Yes"
                             {% if data.outputControlFileOption == 'Yes' or not data.outputControlFileOption %} checked {% endif %} />
 
-		    		<span class="ueb-radio inline">{{ _('Yes') }}</span> 
+		    		<span class="ueb-radio inline">{{ _('Yes') }}</span>
 		    		<br />
 
 					<input type="radio" name="outputControlFileOption" id="radDefaultOutputControlFileNo"  value="No"
                             {% if data.outputControlFileOption == 'No' %} checked {% endif %} />
 
-					<span class="ueb-radio inline">{{ _('No') }}</span> 
-					
+					<span class="ueb-radio inline">{{ _('No') }}</span>
+
 					{% block form_field_select_output_control_text_file %}
+                        {% snippet 'snippets/file_selection_dropdown.html',
+                            dict={  'div_id': 'output_controlfile',
+                                    'field_id': 'field-outputControlFile',
+                                    'field-name': 'outputControlFile',
+                                    'selected_file': data.outputControlFile,
+                                    'file_format_control': False
+                                 },
+                            files=c.ueb_dat_files,
+                            file_select_errors=errors.outputControlFile
+                        %}
+                        {#
 						<div id="output_controlfile" class="control-group control-medium control-select">
                             <div class="controls">
                                 <select id="field-outputControlFile" name="outputControlFile" data-module="autocomplete">
-                                    {#<option value="" {% if not data.outputControlFile %} selected="selected" {% endif %}>{{ _('Select a text file...') }}</option>#}
+
                                     {% for file in c.ueb_dat_files %}
                                         <option value="{{ file.id }}" {% if data.outputControlFile == file.id %} selected="selected" {% endif %}>{{ file.name }}</option>
                                     {% endfor %}
                                 </select>
-                                {% if errors.outputControlFile %}<span class="error-block">{{ errors.outputControlFile }}</span>{% endif %}
+                                {% snippet 'snippets/form_field_error.html', field_errors=errors.outputControlFile %}
 
-                                {#
-                                {% set format_attrs={'data-module': 'autocomplete', 'data-module-source': '/api/2/util/resource/format_autocomplete?incomplete=?'} %}
-                                    {% call form.input('outputControlFile', id='field-outputcontrolfile', label=_('Select a text file'), placeholder=_(''), value=data.outputcontrolfile, error=errors.outputcontrolfile, classes=['control-medium'], attrs=format_attrs) %}
 
-                                    {% endcall %}
-                                #}
                             </div>
-		    			</div>		    				
+		    			</div>
+                        #}
 	    			{% endblock %}
 	    		{% endblock %}
 	    		<br />
@@ -1852,76 +2444,88 @@
 		    		<input type="radio" name="aggrOutputControlFileOption" id="radDefaultAggrOutputControlFileYes" value="Yes"
                             {% if data.aggrOutputControlFileOption == 'Yes' or not data.aggrOutputControlFileOption %} checked {% endif %} />
 
-		    		<span class="ueb-radio inline">{{ _('Yes') }}</span> 
+		    		<span class="ueb-radio inline">{{ _('Yes') }}</span>
                     <br />
 					<input type="radio" name="aggrOutputControlFileOption" id="radDefaultAggrOutputControlFileNo" value="No"
                             {% if data.aggrOutputControlFileOption == 'No' %} checked {% endif %} />
 
-					<span class="ueb-radio inline">{{ _('No') }}</span> 
+					<span class="ueb-radio inline">{{ _('No') }}</span>
 					<br />
 					{% block form_field_select_aggregated_output_control_text_file %}
+                        {% snippet 'snippets/file_selection_dropdown.html',
+                            dict={  'div_id': 'aggroutput_controlfile',
+                                    'field_id': 'field-aggrOutputControlFile',
+                                    'field-name': 'aggrOutputControlFile',
+                                    'selected_file': data.aggrOutputControlFile,
+                                    'file_format_control': False
+                                 },
+                            files=c.ueb_dat_files,
+                            file_select_errors=errors.aggrOutputControlFile
+                        %}
+                        {#
 						<div id="aggroutput_controlfile" class="control-group control-medium control-select">
                             <div class="controls">
                                 <select id="field-aggrOutputControlFile" name="aggrOutputControlFile" data-module="autocomplete">
-                                    {#<option value="" {% if not data.aggrOutputControlFile %} selected="selected" {% endif %}>{{ _('Select a text file...') }}</option>#}
+                                    <option value="" {% if not data.aggrOutputControlFile %} selected="selected" {% endif %}>{{ _('Select a text file...') }}</option>
                                     {% for file in c.ueb_dat_files %}
                                         <option value="{{ file.id }}" {% if data.aggrOutputControlFile == file.id %} selected="selected" {% endif %}>{{ file.name }}</option>
                                     {% endfor %}
                                 </select>
-                                {% if errors.aggrOutputControlFile %}<span class="error-block">{{ errors.aggrOutputControlFile }}</span>{% endif %}
+                                {% snippet 'snippets/form_field_error.html', field_errors=errors.aggrOutputControlFile %}
 
-                                {#
+
                                 {% set format_attrs={'data-module': 'autocomplete', 'data-module-source': '/api/2/util/resource/format_autocomplete?incomplete=?'} %}
                                     {% call form.input('aggrOutputControlFile', id='field-aggroutputcontrolfile', label=_('Select a text file'), placeholder=_(''), value=data.aggrOutputControlFile, error=errors.aggrOutputControlFile, classes=['control-medium'], attrs=format_attrs) %}
 
                                     {% endcall %}
-                                #}
+
 		    				</div>
                         </div>
+                        #}
 	    			{% endblock %}
 	    		{% endblock %}
-	        {% endif %}	
-	        
+	        {% endif %}
+
 	        {# submission confirmation #}
 	        {% if c.form_stage == 'stage_confirm' %}
 	        	{#
 	        	<div>
 	        		{{ c.selected_data }}
-	        	</div>	
+	        	</div>
 	        	#}
 	        	{% set count = 1 %}
 	        	{% for section in c.ueb_input_sections %}
 	        		<fieldset>
-		    			<legend>{{ section }}</legend>   
-		        	    {% set edit_btn_name = 'edit_%d' % count %} 		
+		    			<legend>{{ section }}</legend>
+		        	    {% set edit_btn_name = 'edit_%d' % count %}
 	        			{% set data_items = c.ueb_input_section_data_items[section] %}
 	        			{% for key in data_items['order'] %}
 	        				{{ key + '%s' % data_items[key] }} <br />
 	        			{% endfor %}
-	        			<div align="right">	        				
-	        				<button class="btn btn-primary" name= "{{ edit_btn_name }}" value="Edit" type="submit">{{ _('Edit') }}</button>	
-	        			</div>	        			
+	        			<div align="right">
+	        				<button class="btn btn-primary" name= "{{ edit_btn_name }}" value="Edit" type="submit">{{ _('Edit') }}</button>
+	        			</div>
 	        			{% set count = count + 1 %}
-	        		</fieldset>	        		
-	        	{% endfor %}        
+	        		</fieldset>
+	        	{% endfor %}
 	        {% endif %}
-	          
-	        <br />     
+
+	        <br />
 	        {% block form_buttons %}
 	        	<p>
 	        	{% if c.form_stage == 'stage_confirm' %}
-	        		<button class="btn btn-primary" name="confirm" value="Confirm" type="submit">{{ _('Confirm') }}</button>	        		
+	        		<button class="btn btn-primary" name="confirm" value="Confirm" type="submit">{{ _('Confirm') }}</button>
 	        	{% endif %}
 	        	{% if c.form_stage != 'stage_confirm' %}
 		        	<button class="btn btn-primary" name="submit" value="Submit" type="submit">{{ _('Submit') }}</button>
 		        	{% if c.form_stage != 'stage_1' %}
 	      				<button class="btn" name="prev" value="Previous" type="submit">{{ _('Prev') }}</button>
 	      			{% endif %}
-	      			      			
+
 	      			{% if c.form_stage != 'stage_9' %}
-	      				<button class="btn" name="next" value="Next" type="submit">{{ _('Next') }}</button>     
-	      			{% endif %}	
-	      		{% endif %}	
+	      				<button class="btn" name="next" value="Next" type="submit">{{ _('Next') }}</button>
+	      			{% endif %}
+	      		{% endif %}
       			</p>
     		{% endblock %}
 	    </form>

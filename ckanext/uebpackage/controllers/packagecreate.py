@@ -3,16 +3,21 @@ import logging
 import ckan.plugins as p
 from ckan.lib.helpers import json
 from ckan.controllers import storage
+from sqlalchemy import *
 from datetime import datetime
 import os
 import shutil
 import httplib
 from .. import helpers as uebhelper
 
+from pylons import response
+
 tk = p.toolkit
 _ = tk._    # translator function
 
 log = logging.getLogger('ckan.logic')
+
+# response.charset = 'utf8'
 
 
 class PackagecreateController(base.BaseController):
@@ -85,12 +90,12 @@ class PackagecreateController(base.BaseController):
             return tk.render('packagecreateform.html', extra_vars=form_vars)
         elif 'confirm' in tk.request.params:
             return _process_ueb_pkg_request_submit()
-            #return 'Your UEB model package request is now in a queue for processing.'
+            #   return 'Your UEB model package request is now in a queue for processing.'
         elif 'next' in tk.request.params:            
             form_stage_number += 1                     
         elif "prev" in tk.request.params:            
             form_stage_number -= 1
-        else: # 'edit' in tk.request.params:
+        else:   # 'edit' in tk.request.params:
             edit_stages = range(1, 10)
             for stage in edit_stages:
                 edit_btn_name = 'edit_%d' % stage
@@ -162,8 +167,8 @@ def _process_ueb_pkg_request_submit():
     request_zip_file = _create_ueb_pkg_build_request_zip_file(ueb_pkg_request_in_json, selected_file_ids) 
     pkg_process_id = _send_request_to_app_server(request_zip_file) 
     _update_request_resource_process_job_id(ueb_model_pkg_request_resource_id, pkg_process_id)
-    job_status_processing = uebhelper.StringSettings.app_server_job_status_processing
-    _update_request_resource_process_status(ueb_model_pkg_request_resource_id, job_status_processing)
+    job_status_queue = uebhelper.StringSettings.app_server_job_status_in_queue
+    _update_request_resource_process_status(ueb_model_pkg_request_resource_id, job_status_queue)
     base.session.clear()        
     tk.c.request_process_job_id = pkg_process_id
     return tk.render('package_build_request_submission.html')
@@ -340,14 +345,20 @@ def _create_ueb_pkg_build_request_zip_file(ueb_pkg_request_in_json, selected_fil
 
 
 def _set_context_to_shape_file_resources():
-    
+
+    """
+    create a list of shape files in the system that are owned
+    by the current user. If the user has uploaded it then he/she owns it.
+    @return: None
+    """
+
     # note: resource_search returns a list of matching resources
     # that can include any deleted resources
     resource_search_action = tk.get_action('resource_search')
     context = {'model': base.model, 'session': base.model.Session,
                'user': tk.c.user or tk.c.author, 'for_view': True}
     
-    # get the resource that has the format field set to zip and resource metaddata in the extras column has ResourceType
+    # get the resource that has the format field set to zip and resource metadata in the extras column has ResourceType
     # as "Shape File" and the resource_type is file.upload    
     data_dict = {'query': ['format:zip', 'ResourceType:Shape File', 'resource_type:file.upload']}
     shape_file_resources = resource_search_action(context, data_dict)['results']
@@ -363,17 +374,13 @@ def _set_context_to_shape_file_resources():
         if not active_resource:
             continue            
 
-        # check if the shape file belongs to the current user, otherwise skip
-        # get the matching resource object and then get the id of the related package
-        resource_obj = base.model.Resource.get(file_resource['id'])
-        related_pkg_obj = resource_obj.resource_group.package
-        if related_pkg_obj.author:
-            if related_pkg_obj.author != tk.c.user:
-                continue
+        # check if the file resource is owned by the current user
+        user_owns_resource = uebhelper.is_user_owns_resource(file_resource['id'], tk.c.user)
 
-        resource['id'] = file_resource['id']
-        resource['name'] = file_resource['name']
-        file_resources.append(resource) 
+        if user_owns_resource:
+            resource['id'] = file_resource['id']
+            resource['name'] = file_resource['name']
+            file_resources.append(resource)
                    
     tk.c.ueb_domain_shape_files = file_resources    
 
@@ -384,6 +391,10 @@ def _set_context_to_file_resources(file_extension):
     extension of file_extension and return the matching list of
     resources
     """
+    # TODO: save the list of file resources for a given extension type
+    # in the session object so that we do not run this function for
+    # each page of the form
+
     # note: resource_search returns a list of matching resources
     # that can include any deleted resources
     resource_search_action = tk.get_action('resource_search')
@@ -410,17 +421,13 @@ def _set_context_to_file_resources(file_extension):
         if file_resource['resource_type'] == 'file.link':
             continue
 
-        # check if the file resource belongs to the current user, otherwise skip
-        # get the matching file resource object and then get the id of the related package
-        resource_obj = base.model.Resource.get(file_resource['id'])
-        related_pkg_obj = resource_obj.resource_group.package
-        if related_pkg_obj.author:
-            if related_pkg_obj.author != tk.c.user:
-                continue
+        # check if the file resource is owned by the current user
+        user_owns_resource = uebhelper.is_user_owns_resource(file_resource['id'], tk.c.user)
 
-        resource['id'] = file_resource['id']
-        resource['name'] = file_resource['name']
-        file_resources.append(resource)
+        if user_owns_resource:
+            resource['id'] = file_resource['id']
+            resource['name'] = file_resource['name']
+            file_resources.append(resource)
 
     return file_resources
 
@@ -534,7 +541,7 @@ def _validate_stage_one():
     form_stage = 'stage_1'
     pkgname = tk.request.params['pkgname']  
     pkgdescription = tk.request.params['pkgdescription'] 
-    domainfiletypeoption =   tk.request.params['domainfiletypeoption']    
+    domainfiletypeoption = tk.request.params['domainfiletypeoption']
     domainshapefile = tk.request.params['domainshapefile']
     domainnetcdfile = tk.request.params['domainnetcdfile']
     domainnetcdffileformat = tk.request.params['domainnetcdffileformat']
@@ -617,7 +624,7 @@ def _validate_stage_one():
             date = datetime.strptime(startdate, '%m/%d/%Y')
             if date.year != 2011:
                 errors['startdate'].append('Year should be 2011')
-        except (TypeError, ValueError), e:
+        except (TypeError, ValueError):
             errors['startdate'].append('Enter a date value')
     
     if len(errors['enddate']) == 0:
@@ -625,7 +632,7 @@ def _validate_stage_one():
             date = datetime.strptime(enddate, '%m/%d/%Y')
             if date.year != 2011:
                 errors['enddate'].append('Year should be 2011')
-        except (TypeError, ValueError), e:
+        except (TypeError, ValueError):
             errors['enddate'].append('Enter a date value')
     
     # Populate the error_summary list
@@ -633,6 +640,10 @@ def _validate_stage_one():
         # Get the error message for the form field (key)
         value = errors.get(key)            
         if value:  # error message exists
+            #for index, msg in enumerate(value):
+            #    msg = msg.encode('utf-8').replace('[', '').replace(']', '')
+            #    value[index] = msg
+            #value = value.replace('[', '').replace(']', '').replace('u', '')
             error_summary[key] = value
         
     tk.c.form_stage = form_stage     
@@ -2301,7 +2312,7 @@ def _get_package_request_in_json_format():
             tk.c.ueb_input_section_data_items[section_name][var + '-use an input text file:'] = 'Yes'  
             tk.c.ueb_input_section_data_items[section_name]['order'].append(var + '-text file name:')  
             tk.c.ueb_input_section_data_items[section_name][var + '-text file name:'] = \
-                ueb_request_data['SiteInitialConditions'][var + '_text_file_name']
+                ueb_request_data['TimeSeriesInputs'][var + '_text_file_name']
                     
         else:        
             selected_file_ids[var + '_grid_file_id'] = stage_8_data[var + 'gridfile']  
@@ -2312,7 +2323,7 @@ def _get_package_request_in_json_format():
             tk.c.ueb_input_section_data_items[section_name][var + '-use a input grid file:'] = 'Yes'  
             tk.c.ueb_input_section_data_items[section_name]['order'].append(var + '-grid file name:')  
             tk.c.ueb_input_section_data_items[section_name][var + '-grid file name:'] =\
-                ueb_request_data['SiteInitialConditions'][var + '_grid_file_name']
+                ueb_request_data['TimeSeriesInputs'][var + '_grid_file_name']
             tk.c.ueb_input_section_data_items[section_name]['order'].append(var + '-grid file format:')  
             tk.c.ueb_input_section_data_items[section_name][var + '-grid file name:'] =\
                 stage_8_data[var + 'gridfileformat']
@@ -2433,11 +2444,11 @@ def _save_ueb_request_as_resource(pkgname, selected_file_ids):
     package_create_action = tk.get_action('package_create')
     
     # create unique package name using the current time stamp as a postfix to any package name
-    uniq_postfix = datetime.now().isoformat().replace(':', '-').replace('.', '-').lower()
+    unique_postfix = datetime.now().isoformat().replace(':', '-').replace('.', '-').lower()
     pkg_title = pkgname  # + '_'
     data_dict = {
-                    'name': 'ueb_model_package_' + uniq_postfix,  # this needs to be unique as required by DB
-                    'title': pkg_title,  # + uniq_postfix,
+                    'name': 'ueb_model_package_' + unique_postfix,  # this needs to be unique as required by DB
+                    'title': pkg_title,  
                     'author': tk.c.userObj.name if tk.c.userObj else tk.c.author,  # TODO: userObj is None always. Need to retrieve user full name
                     'notes': 'This is a dataset consisting of UEB model package related resources',
                     'extras': [{'key': 'DataSetType', 'value': 'UEB Model Package'},

@@ -485,7 +485,7 @@ ckan.module('package_create', function (jQuery, _) {
 	  	this.$('#aggroutput_controlfile').show();	  	
 	  }	
     },
-    
+
     showHidePolygonFileSelection: function(event) {
     	event.preventDefault();
 		if (this.$('#radDomainPolygonFileType').is(':checked')){
