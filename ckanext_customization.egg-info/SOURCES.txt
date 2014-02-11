@@ -1,0 +1,14 @@
+setup.py
+ckanext/__init__.py
+ckanext/customization/__init__.py
+ckanext/customization/plugin.py
+ckanext/customization/controllers/__init__.py
+ckanext/customization/controllers/datasettypes.py
+ckanext/customization/templates/__init__.py
+ckanext_customization.egg-info/PKG-INFO
+ckanext_customization.egg-info/SOURCES.txt
+ckanext_customization.egg-info/dependency_links.txt
+ckanext_customization.egg-info/entry_points.txt
+ckanext_customization.egg-info/namespace_packages.txt
+ckanext_customization.egg-info/not-zip-safe
+ckanext_customization.egg-info/top_level.txt
