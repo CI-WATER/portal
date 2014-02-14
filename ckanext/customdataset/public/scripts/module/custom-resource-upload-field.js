@@ -67,7 +67,14 @@ this.ckan.module('custom-resource-upload-field', function (jQuery, _, i18n) {
     setupFileUpload: function () {
       var options = this.options;
 
-      this.upload.find('label').text(this.i18n('label'));
+      this.fileExtension = this.getDatasetAllowedFileExtension();
+      var labelText =  this.i18n('label');
+      if (this.fileExtension.length > 0){
+        labelText =  labelText.concat('(' + this.fileExtension + ')');
+      }
+      this.upload.find('label').text(labelText);
+
+      //this.upload.find('label').text(this.i18n('label'));
       this.upload.find('input[type=file]').fileupload({
         type: options.form.method,
         paramName: options.form.file,
@@ -203,23 +210,14 @@ this.ckan.module('custom-resource-upload-field', function (jQuery, _, i18n) {
       if (data.files && data.files.length) {
         var key = this.generateKey(data.files[0].name);
         var fileName = data.files[0].name;
-        var extension = "";
-        if (this.options.dataset_type === "model-package" || this.options.dataset_type === "geographic-feature-set") {
-            extension = ".zip";
-        }
-        else if(this.options.dataset_type === "multidimensional-space-time" ){
-            extension = ".nc";
-        }
-        else if(this.options.dataset_type === "geographic-raster" ){
-            extension = ".geotiff";
-        }
-        if (extension.length > 0){
-            if (fileName.substr(fileName.length - extension.length, extension.length).toLowerCase() != extension.toLowerCase()) {
+
+        if (this.fileExtension.length > 0){
+            if (fileName.substr(fileName.length - this.fileExtension.length, this.fileExtension.length).toLowerCase() != this.fileExtension.toLowerCase()) {
                 var errMessage = this.i18n('invalidFileType');
-                this.sandbox.notify(errMessage.concat(extension));
+                this.sandbox.notify(errMessage.concat(this.fileExtension));
             }
             else {
-                this.div_error.hide();
+                this.div_error.hide(); // PK: not working at this point
                 //this.$('.alert.fade.in.error-alert').hide();
                 this.authenticate(key, data);
             }
@@ -310,6 +308,21 @@ this.ckan.module('custom-resource-upload-field', function (jQuery, _, i18n) {
         event.originalEvent.returnValue = message;
       }
       return message;
+    },
+
+    // PK's function to determine file extension type for a given dataset type
+    getDatasetAllowedFileExtension: function(){
+        var extension = "";
+        if (this.options.dataset_type === "model-package" || this.options.dataset_type === "geographic-feature-set") {
+            extension = ".zip";
+        }
+        else if(this.options.dataset_type === "multidimensional-space-time" ){
+            extension = ".nc";
+        }
+        else if(this.options.dataset_type === "geographic-raster" ){
+            extension = ".geotiff";
+        }
+        return extension;
     }
   };
 });

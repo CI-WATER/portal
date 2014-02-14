@@ -10,19 +10,9 @@
   {% set dataset_type = h.custom_dataset_type() %}
   <input type="hidden" name="dataset_type" value="{{ dataset_type }}" />
 
-  {% if dataset_type == 'ds-1' %}
-    {{ form.input('custom_text_1_1', label=_('Custom Text 1_1'), id='field-custom_text_1', placeholder=_('custom text'), value=data.custom_text_1_1, error=errors.custom_text_1_1, classes=['control-medium']) }}
-    {{ form.input('custom_text_1_2', label=_('Custom Text 1_2'), id='field-custom_text_2', placeholder=_('custom text'), value=data.custom_text_1_2, error=errors.custom_text_1_2, classes=['control-medium']) }}
-  {% endif %}
-
-  {% if dataset_type == 'ds-2' %}
-    {{ form.input('custom_text_2_1', label=_('Custom Text 2_1'), id='field-custom_text_1', placeholder=_('custom text'), value=data.custom_text_2_1, error=errors.custom_text_2_1, classes=['control-medium']) }}
-    {{ form.input('custom_text_2_2', label=_('Custom Text 2_2'), id='field-custom_text_2', placeholder=_('custom text'), value=data.custom_text_2_2, error=errors.custom_text_2_2, classes=['control-medium']) }}
-  {% endif %}
-
   {% if dataset_type == 'model-package' %}
-    {{ form.input('pkg_model_name', label=_('Model name'), id='field-pkg_model_name', placeholder=_('UEB'), value=data.pkg_model_name, error=errors.pkg_model_name, classes=['control-medium']) }}
-    {{ form.input('model_version', label=_('Model version'), id='field-model_version', placeholder=_('1.0'), value=data.model_version, error=errors.model_version, classes=['control-medium']) }}
+    {{ form.input('pkg_model_name', label=_('Model name*'), id='field-pkg_model_name', placeholder=_('UEB'), value=data.pkg_model_name, error=errors.pkg_model_name, classes=['control-medium']) }}
+    {{ form.input('model_version', label=_('Model version*'), id='field-model_version', placeholder=_('1.0'), value=data.model_version, error=errors.model_version, classes=['control-medium']) }}
   {% endif %}
 
   {% if dataset_type == 'multidimensional-space-time' or dataset_type == 'geographic-raster' %}
@@ -72,7 +62,7 @@
   {% endif %}
 
   {% if dataset_type == 'multidimensional-space-time' or dataset_type == 'geographic-feature-set' or dataset_type == 'geographic-raster'%}
-    {{ form.input('projection', label=_('Projection'), id='field-projection', placeholder=_('???'), value=data.projection, error=errors.projection, classes=['control-medium']) }}
+    {{ form.input('projection', label=_('Projection'), id='field-projection', placeholder=_('NAD 1983'), value=data.projection, error=errors.projection, classes=['control-medium']) }}
   {% endif %}
 
 {% endblock %}

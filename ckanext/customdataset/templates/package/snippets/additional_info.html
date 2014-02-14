@@ -3,22 +3,7 @@
 {% block package_additional_info %}
     {{ super() }}
 
-    {{ h.snippet('package/snippets/custom_metadata_item_info.html', fld_name='Dataset Type', fld_value=pkg_dict.dataset_type) }}
-    {% if pkg_dict.custom_text_1_1 %}
-        {{ h.snippet('package/snippets/custom_metadata_item_info.html', fld_name='Custom_Text_1_1', fld_value=pkg_dict.custom_text_1_1) }}
-    {% endif %}
-
-    {% if pkg_dict.custom_text_1_2 %}
-        {{ h.snippet('package/snippets/custom_metadata_item_info.html', fld_name='Custom_Text_1_2', fld_value=pkg_dict.custom_text_1_2) }}
-    {% endif %}
-
-    {% if pkg_dict.custom_text_2_1 %}
-        {{ h.snippet('package/snippets/custom_metadata_item_info.html', fld_name='Custom_Text_2_1', fld_value=pkg_dict.custom_text_2_1) }}
-    {% endif %}
-
-    {% if pkg_dict.custom_text_2_2 %}
-        {{ h.snippet('package/snippets/custom_metadata_item_info.html', fld_name='Custom_Text_2_2', fld_value=pkg_dict.custom_text_2_2) }}
-    {% endif %}
+    {# { h.snippet('package/snippets/custom_metadata_item_info.html', fld_name='Dataset Type', fld_value=pkg_dict.dataset_type) } #}
 
     {% if pkg_dict.pkg_model_name %}
         {{ h.snippet('package/snippets/custom_metadata_item_info.html', fld_name='Model name', fld_value=pkg_dict.pkg_model_name) }}

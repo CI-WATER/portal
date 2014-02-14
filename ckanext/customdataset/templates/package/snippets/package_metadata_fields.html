@@ -15,6 +15,7 @@ won't work. #}
 
 
 {% block package_metadata_fields %}
+  {#
   {% if dataset_type == 'ds-1' %}
       <div class="control-group">
         <label class="control-label" for="field-country_code">{{ _("Country Code") }}</label>
@@ -27,7 +28,7 @@ won't work. #}
         </div>
       </div>
   {% endif %}
-  {#
+
   {% if dataset_type == 'model-package' %}
       <div class="control-group">
         <label class="control-label" for="field-package_type">{{ _("Package type") }}</label>
