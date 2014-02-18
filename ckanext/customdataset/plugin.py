@@ -14,6 +14,31 @@ dataset_type = None
 _ = tk._  # translator function
 
 
+def guess_package_type(expecting_name=False):
+        """
+            Guess the type of package from the URL handling the case
+            where there is a prefix on the URL (such as /data/package)
+        """
+
+        # Special case: if the rot URL '/' has been redirected to the package
+        # controller (e.g. by an IRoutes extension) then there's nothing to do
+        # here.
+        if tk.request.path == '/':
+            return 'dataset'
+
+        parts = [x for x in tk.request.path.split('/') if x]
+
+        idx = -1
+        if expecting_name:
+            idx = -2
+
+        pt = parts[idx]
+        if pt == 'package':
+            pt = 'dataset'
+
+        return pt
+
+
 def create_country_codes():
     '''Create country_codes vocab and tags, if they don't exist already.
 
@@ -96,6 +121,8 @@ class _BaseDataset(tk.DefaultDatasetForm):
     p.implements(p.ITemplateHelpers, inherit=True)
     p.implements(p.IRoutes, inherit=True)
     p.implements(p.IConfigurer, inherit=True)
+    p.implements(p.IFacets, inherit=True)
+    p.implements(p.IPackageController, inherit=True)
 
     _instance = None
     _helpers_loaded = False
@@ -121,10 +148,8 @@ class _BaseDataset(tk.DefaultDatasetForm):
         # get the current dir path (here) for this plugin
         here = os.path.dirname(__file__)
         rootdir = os.path.dirname(os.path.dirname(here))
-        our_public_dir = os.path.join(rootdir, 'ckanext',
-                                      'customdataset', 'public')
-        config['extra_public_paths'] = ','.join([our_public_dir,
-                config.get('extra_public_paths', '')])
+        our_public_dir = os.path.join(rootdir, 'ckanext', 'customdataset', 'public')
+        config['extra_public_paths'] = ','.join([our_public_dir, config.get('extra_public_paths', '')])
 
     def _add_resource(self):
         if _BaseDataset._resource_added:
@@ -148,9 +173,6 @@ class _BaseDataset(tk.DefaultDatasetForm):
         return map
 
     def get_helpers(self):
-        if _BaseDataset._helpers_loaded:
-            return {}
-        _BaseDataset._helpers_loaded = True
         return {'custom_dataset_type': get_dataset_type}
 
     def is_fallback(self):
@@ -173,6 +195,268 @@ class _BaseDataset(tk.DefaultDatasetForm):
     def history_template(self):
         return super(_BaseDataset, self).history_template()
 
+    # IFacets
+    def dataset_facets(self, facets_dict, package_type):
+        ''' Update the facets_dict and return it. '''
+
+
+        # We will actually remove all the core facets and add our own
+        #facets_dict.clear()
+
+        '''
+        facets_dict['publisher_source_type'] = p.toolkit._('Source')
+        facets_dict['secondary_publisher'] = p.toolkit._('Secondary Publisher')
+        facets_dict['organization'] = p.toolkit._('Publisher')
+        facets_dict['publisher_organization_type'] = p.toolkit._('Organisation Type')
+        facets_dict['country'] = p.toolkit._('Recipient Country')
+        facets_dict['filetype'] = p.toolkit._('File Type')
+        if p.toolkit.c.userobj and p.toolkit.c.userobj.sysadmin:
+            facets_dict['issue_type'] = p.toolkit._('Issue')
+
+        '''
+
+        return facets_dict
+
+    # IPackageContoller
+    def before_index(self, pkg_dict):
+        '''
+             Extensions will receive what will be given to the solr for
+             indexing. This is essentially a flattened dict (except for
+             multli-valued fields such as tags) of all the terms sent to
+             the indexer. The extension can modify this by returning an
+             altered version.
+        '''
+        pkg_dict['type'] = 'Dataset Types'
+        return pkg_dict
+
+
+# TODO: Made an attempt to implement all custom dataset types in one plugin
+# From the tests, it seems it works for creating specific dataset type. However, it
+# does not work for editing specific dataset
+class CustomDatasetsPlugin(p.SingletonPlugin, tk.DefaultDatasetForm):
+    p.implements(p.IDatasetForm, inherit=True)
+    p.implements(p.ITemplateHelpers, inherit=True)
+    p.implements(p.IRoutes, inherit=True)
+    p.implements(p.IConfigurer, inherit=True)
+    p.implements(p.IFacets, inherit=True)
+    p.implements(p.IPackageController, inherit=True)
+
+    tk.add_resource('public', 'custom_dataset_resources')
+
+    def update_config(self, config):
+        # Add this plugin's templates dir (ckanext-customdataset/ckanext/customdatset/templates)
+        # to CKAN's extra_template_paths, so
+        # that CKAN will use this plugin's custom templates.
+        tk.add_template_directory(config, 'templates')
+        # add the extension's public dir path so that
+        # ckan can find any resources used from this path
+        # get the current dir path (here) for this plugin
+        here = os.path.dirname(__file__)
+        rootdir = os.path.dirname(os.path.dirname(here))
+        our_public_dir = os.path.join(rootdir, 'ckanext', 'customdataset', 'public')
+        config['extra_public_paths'] = ','.join([our_public_dir, config.get('extra_public_paths', '')])
+
+    def before_map(self, map):
+
+        # Here create route shortcuts to all your extension's controllers and their actions
+        map.connect('/dataset_types',
+                    controller='ckanext.customdataset.controllers.datasettypes:DatasetTypesController',
+                    action='select_dataset_types')
+
+        return map
+
+    def get_helpers(self):
+        return {
+                'custom_dataset_type': get_dataset_type,
+                'model_package_types': get_model_package_types
+               }
+
+    def is_fallback(self):
+        # Return False to register this plugin as the handler for
+        # a specific package type.
+        return False
+
+    def package_types(self):
+        # This plugin only handles the special custom package type (model-package), so it
+        # registers itself as the handler for this specific package/dataset type.
+        return ['model-package', 'multidimensional-space-time']
+
+    def package_form(self):
+        global dataset_type
+        #dataset_type = self.package_types()[0]
+        dataset_type = self._guess_package_type(True)
+        return super(CustomDatasetsPlugin, self).package_form()
+
+    def create_package_schema(self):
+        schema = super(CustomDatasetsPlugin, self).create_package_schema()
+        schema = self._modify_package_schema(schema)
+        return schema
+
+    def update_package_schema(self):
+        schema = super(CustomDatasetsPlugin, self).update_package_schema()
+        schema = self._modify_package_schema(schema)
+        return schema
+
+    def show_package_schema(self):
+        schema = super(CustomDatasetsPlugin, self).show_package_schema()
+
+        # Don't show vocab tags mixed in with normal 'free' tags
+        # (e.g. on dataset pages, or on the search page)
+        schema['tags']['__extras'].append(tk.get_converter('free_tags_only'))
+
+        # Add all custom metadata fields for this package/dataset type
+        # make sure you specify the converter before you specify the validators for
+        # each metadata elements. It looks like the validator needs to be always 'ignore-missing'
+        # since this schema is used in dataset readonly mode
+        _ignore_missing = tk.get_validator('ignore_missing')
+        _convert_from_extras = tk.get_converter('convert_from_extras')
+        if dataset_type == 'model-package':
+            schema.update({
+                    'pkg_model_name': [_convert_from_extras, _ignore_missing],
+                    'model_version': [_convert_from_extras, _ignore_missing],
+                    'north_extent': [_convert_from_extras, _ignore_missing],
+                    'west_extent': [_convert_from_extras, _ignore_missing],
+                    'south_extent': [_convert_from_extras, _ignore_missing],
+                    'east_extent': [_convert_from_extras, _ignore_missing],
+                    'simulation_start_day': [_convert_from_extras, _ignore_missing],
+                    'simulation_end_day': [_convert_from_extras, _ignore_missing],
+                    'time_step': [_convert_from_extras, _ignore_missing],
+                    'package_type': [tk.get_converter('convert_from_tags')('model_package_types'), _ignore_missing],
+                    'dataset_type': [_convert_from_extras, _ignore_missing]
+                    })
+
+        elif dataset_type == 'multidimensional-space-time':
+            schema.update({
+                    'variable_names': [_convert_from_extras, _ignore_missing],
+                    'variable_units': [_convert_from_extras, _ignore_missing],
+                    'north_extent': [_convert_from_extras, _ignore_missing],
+                    'west_extent': [_convert_from_extras, _ignore_missing],
+                    'south_extent': [_convert_from_extras, _ignore_missing],
+                    'east_extent': [_convert_from_extras, _ignore_missing],
+                    'data_start_day': [_convert_from_extras, _ignore_missing],
+                    'data_end_day': [_convert_from_extras, _ignore_missing],
+                    'projection': [_convert_from_extras, _ignore_missing],
+                    'dataset_type': [_convert_from_extras, _ignore_missing]
+                    })
+
+        return schema
+
+    def new_template(self):
+        return super(CustomDatasetsPlugin, self).new_template()
+
+    def read_template(self):
+        return super(CustomDatasetsPlugin, self).read_template()
+
+    def edit_template(self):
+        return super(CustomDatasetsPlugin, self).edit_template()
+
+    def search_template(self):
+        return super(CustomDatasetsPlugin, self).search_template()
+
+    def history_template(self):
+        return super(CustomDatasetsPlugin, self).history_template()
+
+
+    # IFacets
+    def dataset_facets(self, facets_dict, package_type):
+        ''' Update the facets_dict and return it. '''
+
+
+        # We will actually remove all the core facets and add our own
+        #facets_dict.clear()
+
+        '''
+        facets_dict['publisher_source_type'] = p.toolkit._('Source')
+        facets_dict['secondary_publisher'] = p.toolkit._('Secondary Publisher')
+        facets_dict['organization'] = p.toolkit._('Publisher')
+        facets_dict['publisher_organization_type'] = p.toolkit._('Organisation Type')
+        facets_dict['country'] = p.toolkit._('Recipient Country')
+        facets_dict['filetype'] = p.toolkit._('File Type')
+        if p.toolkit.c.userobj and p.toolkit.c.userobj.sysadmin:
+            facets_dict['issue_type'] = p.toolkit._('Issue')
+
+        '''
+
+        return facets_dict
+
+    # implements IPackageController
+    def before_index(self, data_dict):
+        field_name = 'dataset_type'
+        if data_dict.get('extras_{0}'.format(field_name)):
+            if dataset_type == 'model-package':
+                data_dict[field_name] = 'Model Package'
+            elif dataset_type == 'multidimensional-space-time':
+                data_dict[field_name] = 'Multidimensional Space Time'
+
+        return data_dict
+
+    def _guess_package_type(self, expecting_name=False):
+        """
+            Guess the type of package from the URL handling the case
+            where there is a prefix on the URL (such as /data/package)
+        """
+
+        # Special case: if the rot URL '/' has been redirected to the package
+        # controller (e.g. by an IRoutes extension) then there's nothing to do
+        # here.
+        if tk.request.path == '/':
+            return 'dataset'
+
+        parts = [x for x in tk.request.path.split('/') if x]
+
+        idx = -1
+        if expecting_name:
+            idx = -2
+
+        pt = parts[idx]
+        if pt == 'package':
+            pt = 'dataset'
+
+        return pt
+
+    def _modify_package_schema(self, schema):
+
+        # TODO: need to implement chained validators
+        # that allows to validate a group of fields together
+        # e.g if start_date is entered then end_date is required
+
+        # Add custom metadata fields to the schema, this one will use
+        # convert_to_extras for all fields except for package_type for which convert_to_tags will be used.
+        _not_empty = tk.get_validator('not_empty')
+        _ignore_missing = tk.get_validator('ignore_missing')
+        _convert_to_extras = tk.get_converter('convert_to_extras')
+
+        if dataset_type == 'model-package':
+            schema.update({
+                    'pkg_model_name': [_not_empty, _convert_to_extras],
+                    'model_version': [_not_empty, _convert_to_extras],
+                    'north_extent': [_ignore_missing, v.Number(), _convert_to_extras],
+                    'west_extent': [_ignore_missing, v.Number(), _convert_to_extras],
+                    'south_extent': [_ignore_missing, v.Number(), _convert_to_extras],
+                    'east_extent': [_ignore_missing, v.Number(), _convert_to_extras],
+                    'simulation_start_day': [_ignore_missing, v.DateConverter(), _convert_to_extras],
+                    'simulation_end_day': [_ignore_missing, v.DateConverter(), _convert_to_extras],
+                    'time_step': [_ignore_missing, v.Number(), _convert_to_extras],
+                    'package_type': [_not_empty, tk.get_converter('convert_to_tags')('model_package_types')],
+                    'dataset_type': [_not_empty, _convert_to_extras]
+                    })
+
+        elif dataset_type == 'multidimensional-space-time':
+            schema.update({
+                    'variable_names': [_ignore_missing, _convert_to_extras],
+                    'variable_units': [_ignore_missing, _convert_to_extras],
+                    'north_extent': [_ignore_missing, v.Number(), _convert_to_extras],
+                    'west_extent': [_ignore_missing, v.Number(), _convert_to_extras],
+                    'south_extent': [_ignore_missing, v.Number(), _convert_to_extras],
+                    'east_extent': [_ignore_missing, v.Number(), _convert_to_extras],
+                    'data_start_day': [_ignore_missing, v.DateConverter(), _convert_to_extras],
+                    'data_end_day': [_ignore_missing, v.DateConverter(), _convert_to_extras],
+                    'projection': [_ignore_missing, _convert_to_extras],
+                    'dataset_type': [_not_empty, _convert_to_extras]
+                    })
+
+        return schema
+
 
 class DefaultDatasetPlugin(p.SingletonPlugin, tk.DefaultDatasetForm):
     p.implements(p.IDatasetForm, inherit=True)
@@ -192,6 +476,14 @@ class DefaultDatasetPlugin(p.SingletonPlugin, tk.DefaultDatasetForm):
         global dataset_type
         dataset_type = 'dataset'
         return super(DefaultDatasetPlugin, self).package_form()
+
+    def dataset_facets(self, facets_dict, package_type):
+        ''' Update the facets_dict and return it. '''
+
+        # We will actually remove all the core facets and add our own
+        #facets_dict.clear()
+        facets_dict['dataset_type'] = p.toolkit._('Dataset Types')
+        return facets_dict
 
 
 class ModelPackagePlugin(p.SingletonPlugin, _BaseDataset):
@@ -286,8 +578,12 @@ class ModelPackagePlugin(p.SingletonPlugin, _BaseDataset):
 
     # implements IPackageController
     def before_index(self, data_dict):
-        data_dict['dataset_type'] = 'model-package'
+        field_name = 'dataset_type'
+        if data_dict.get('extras_{0}'.format(field_name)):
+                data_dict[field_name] = 'Model Package'
+
         return data_dict
+
 
 class MultidimensionalSpaceTimePlugin(p.SingletonPlugin, _BaseDataset):
     p.implements(p.IDatasetForm, inherit=True)
@@ -365,6 +661,7 @@ class MultidimensionalSpaceTimePlugin(p.SingletonPlugin, _BaseDataset):
     def package_form(self):
         global dataset_type
         dataset_type = self.package_types()[0]
+        dataset_type = guess_package_type(True)
         return super(MultidimensionalSpaceTimePlugin, self).package_form()
 
 

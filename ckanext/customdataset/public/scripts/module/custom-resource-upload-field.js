@@ -320,7 +320,7 @@ this.ckan.module('custom-resource-upload-field', function (jQuery, _, i18n) {
             extension = ".nc";
         }
         else if(this.options.dataset_type === "geographic-raster" ){
-            extension = ".geotiff";
+            extension = ".tif";
         }
         return extension;
     }
