@@ -120,7 +120,7 @@ class DelineatewatershedController(base.BaseController):
             ajax_response.message = _('CKAN error:Expected shape files source dir path is missing.')
             return ajax_response.to_json()
 
-        if os.path.exists(shape_zip_file) == False:
+        if not os.path.exists(shape_zip_file):
             #create the watershed zip file first
             if os.path.isdir(target_zip_dir):
                 shutil.rmtree(target_zip_dir)
@@ -157,11 +157,11 @@ class DelineatewatershedController(base.BaseController):
         
         # create unique package name using the current time stamp as a postfix to any package name
         unique_postfix = datetime.now().isoformat().replace(':', '-').replace('.', '-').lower()
-        pkg_title = shape_file_name + '_'
+        pkg_title = shape_file_name  # + '_'
         pkg_name = shape_file_name.replace(' ', '-').lower()
         data_dict = {
                     'name': pkg_name + '_' + unique_postfix,
-                    'title': pkg_title + unique_postfix,
+                    'title': pkg_title,  # + unique_postfix
                     'author': tk.c.userObj.name if tk.c.userObj else tk.c.author,   # TODO: userObj is None always. Need to retrieve user full name
                     'notes': 'This is a dataset that contains a watershed shape zip file for an outlet'
                              ' location at latitude:%s and longitude:%s' % (lat, lon),

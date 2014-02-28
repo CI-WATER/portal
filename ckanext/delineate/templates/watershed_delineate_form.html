@@ -29,7 +29,7 @@
 			<div class="module-content">
 		    	<p>Click on the map to select an outlet location. Then click the Delineate button to start watershed delineation.</p>
 		    
-			{# using the html5 attribute 'data-module' to include the delineate.js file #}
+			{# using the html5 attribute 'data-module' to include the delineate.js file did not work for the form #}
 			<form name="map_buttons" method="get" action="{{ action }}" >
 				<p>
 					<button class="btn btn-primary" style='width:200px' id="btn_delineate" name="delineate" value="Delineate" onclick="delineateWatershed()" type="button">{{ _('Delineate') }}</button>
