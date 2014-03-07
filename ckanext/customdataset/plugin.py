@@ -461,6 +461,8 @@ class CustomDatasetsPlugin(p.SingletonPlugin, tk.DefaultDatasetForm):
 class DefaultDatasetPlugin(p.SingletonPlugin, tk.DefaultDatasetForm):
     p.implements(p.IDatasetForm, inherit=True)
     p.implements(p.IRoutes, inherit=True)
+    p.implements(p.IPackageController, inherit=True)
+    #p.implements(p.IMapper, inherit=True)
 
     def is_fallback(self):
         # Return True to register this plugin as the handler for
@@ -485,6 +487,36 @@ class DefaultDatasetPlugin(p.SingletonPlugin, tk.DefaultDatasetForm):
         facets_dict['dataset_type'] = p.toolkit._('Dataset Types')
         return facets_dict
 
+    def before_search(self, search_params):
+        '''
+            Extensions will receive a dictionary with the query parameters,
+            and should return a modified (or not) version of it.
+
+            search_params will include an `extras` dictionary with all values
+            from fields starting with `ext_`, so extensions can receive user
+            input from specific fields.
+
+        '''
+        return search_params
+
+    # implements IPackageController
+    def before_view(self, pkg_dict):
+        '''
+             Extensions will recieve this before the dataset gets
+             displayed. The dictionary passed will be the one that gets
+             sent to the template.
+        '''
+        return pkg_dict
+
+    # implements IMapper
+    '''
+    def before_insert(self, mapper, connection, instance):
+        """
+        Receive an object instance before that instance is INSERTed into
+        its table.
+        """
+        my_instance = instance
+    '''
 
 class ModelPackagePlugin(p.SingletonPlugin, _BaseDataset):
     p.implements(p.IDatasetForm, inherit=True)
@@ -526,6 +558,8 @@ class ModelPackagePlugin(p.SingletonPlugin, _BaseDataset):
                 'simulation_end_day': [_ignore_missing, v.DateConverter(), _convert_to_extras],
                 'time_step': [_ignore_missing, v.Number(), _convert_to_extras],
                 'package_type': [_not_empty, tk.get_converter('convert_to_tags')('model_package_types')],
+                'package_run_status': [_ignore_missing, _convert_to_extras],
+                'package_run_job_id': [_ignore_missing, _convert_to_extras],
                 'dataset_type': [_not_empty, _convert_to_extras]
                 })
 
@@ -566,6 +600,8 @@ class ModelPackagePlugin(p.SingletonPlugin, _BaseDataset):
                 'simulation_end_day': [_convert_from_extras, _ignore_missing],
                 'time_step': [_convert_from_extras, _ignore_missing],
                 'package_type': [tk.get_converter('convert_from_tags')('model_package_types'), _ignore_missing],
+                'package_run_status': [_convert_from_extras, _ignore_missing],
+                'package_run_job_id': [_convert_from_extras, _ignore_missing],
                 'dataset_type': [_convert_from_extras, _ignore_missing]
                 })
 
@@ -603,7 +639,7 @@ class MultidimensionalSpaceTimePlugin(p.SingletonPlugin, _BaseDataset):
         _not_empty = tk.get_validator('not_empty')
 
         # Add custom metadata fields to the schema, this one will use
-        # convert_to_extras for all fields except for package_type for which convert_to_tags will be used.
+        # convert_to_extras for all fields.
         schema.update({
                 'variable_names': [_ignore_missing, _convert_to_extras],
                 'variable_units': [_ignore_missing, _convert_to_extras],
@@ -672,14 +708,14 @@ class GeographicRasterPlugin(p.SingletonPlugin, _BaseDataset):
     #p.implements(p.ITemplateHelpers, inherit=True)
 
     def package_types(self):
-        # This plugin only handles the special custom package type (model-package), so it
+        # This plugin only handles the special custom package type (geographic-raster), so it
         # registers itself as the handler for this specific package/dataset type.
         return ['geographic-raster']
 
     def _modify_package_schema(self, schema):
 
         # Add custom metadata fields to the schema, this one will use
-        # convert_to_extras for all fields except for package_type for which convert_to_tags will be used.
+        # convert_to_extras for all fields.
         _ignore_missing = tk.get_validator('ignore_missing')
         _convert_to_extras = tk.get_converter('convert_to_extras')
         _not_empty = tk.get_validator('not_empty')
@@ -749,14 +785,14 @@ class GeographicFeatureSetPlugin(p.SingletonPlugin, _BaseDataset):
     #p.implements(p.ITemplateHelpers, inherit=True)
 
     def package_types(self):
-        # This plugin only handles the special custom package type (model-package), so it
+        # This plugin only handles the special custom package type (geographic-feature-set), so it
         # registers itself as the handler for this specific package/dataset type.
         return ['geographic-feature-set']
 
     def _modify_package_schema(self, schema):
 
         # Add custom metadata fields to the schema, this one will use
-        # convert_to_extras for all fields except for package_type for which convert_to_tags will be used.
+        # convert_to_extras for all fields.
         _convert_to_extras = tk.get_converter('convert_to_extras')
         _not_empty = tk.get_validator('not_empty')
         _ignore_missing = tk.get_validator('ignore_missing')
@@ -815,5 +851,71 @@ class GeographicFeatureSetPlugin(p.SingletonPlugin, _BaseDataset):
         global dataset_type
         dataset_type = self.package_types()[0]
         return super(GeographicFeatureSetPlugin, self).package_form()
+
+
+class ModelConfigurationPlugin(p.SingletonPlugin, _BaseDataset):
+    p.implements(p.IDatasetForm, inherit=True)
+    p.implements(p.IConfigurer, inherit=True)
+    p.implements(p.IRoutes, inherit=True)
+
+    def package_types(self):
+        # This plugin only handles the special custom package type (model-configuration), so it
+        # registers itself as the handler for this specific package/dataset type.
+        return ['model-configuration']
+
+    def _modify_package_schema(self, schema):
+
+        # Add custom metadata fields to the schema, this one will use
+        # convert_to_extras for all fields.
+        _convert_to_extras = tk.get_converter('convert_to_extras')
+        _not_empty = tk.get_validator('not_empty')
+        _ignore_missing = tk.get_validator('ignore_missing')
+
+        schema.update({
+                'model_name': [_not_empty, _convert_to_extras],
+                'processing_status': [_not_empty, _convert_to_extras],
+                'package_build_request_job_id': [_ignore_missing, _convert_to_extras],
+                'package_availability': [_ignore_missing, _convert_to_extras]
+                })
+
+        return schema
+
+    def create_package_schema(self):
+        schema = super(ModelConfigurationPlugin, self).create_package_schema()
+        schema = self._modify_package_schema(schema)
+        return schema
+
+    def update_package_schema(self):
+        schema = super(ModelConfigurationPlugin, self).update_package_schema()
+        schema = self._modify_package_schema(schema)
+        return schema
+
+    def show_package_schema(self):
+        schema = super(ModelConfigurationPlugin, self).show_package_schema()
+
+        # Don't show vocab tags mixed in with normal 'free' tags
+        # (e.g. on dataset pages, or on the search page)
+        schema['tags']['__extras'].append(tk.get_converter('free_tags_only'))
+
+        # Add all custom metadata fields for this package/dataset type
+        # make sure you specify the converter before you specify the validators for
+        # each metadata elements. It looks like the validator needs to be always 'ignore-missing'
+        # since this schema is used in dataset readonly mode
+        _ignore_missing = tk.get_validator('ignore_missing')
+        _convert_from_extras = tk.get_converter('convert_from_extras')
+
+        schema.update({
+                'model_name': [_convert_from_extras, _ignore_missing],
+                'processing_status': [_convert_from_extras, _ignore_missing],
+                'package_build_request_job_id': [_convert_from_extras, _ignore_missing],
+                'package_availability': [_convert_from_extras, _ignore_missing]
+                })
+
+        return schema
+
+    def package_form(self):
+        global dataset_type
+        dataset_type = self.package_types()[0]
+        return super(ModelConfigurationPlugin, self).package_form()
 
 

@@ -69,4 +69,24 @@
     {% if pkg_dict.projection %}
         {{ h.snippet('package/snippets/custom_metadata_item_info.html', fld_name='Projection', fld_value=pkg_dict.projection) }}
     {% endif %}
+
+    {% if pkg_dict.model_name %}
+        {{ h.snippet('package/snippets/custom_metadata_item_info.html', fld_name='Model name', fld_value=pkg_dict.model_name) }}
+    {% endif %}
+
+    {% if pkg_dict.processing_status %}
+        {{ h.snippet('package/snippets/custom_metadata_item_info.html', fld_name='Package build request status', fld_value=pkg_dict.processing_status) }}
+    {% endif %}
+
+    {% if pkg_dict.package_build_request_job_id %}
+        {{ h.snippet('package/snippets/custom_metadata_item_info.html', fld_name='Package build request job ID', fld_value=pkg_dict.package_build_request_job_id) }}
+    {% endif %}
+
+    {% if pkg_dict.package_run_status %}
+        {{ h.snippet('package/snippets/custom_metadata_item_info.html', fld_name='Package run status', fld_value=pkg_dict.package_run_status) }}
+    {% endif %}
+
+    {% if pkg_dict.package_run_job_id %}
+        {{ h.snippet('package/snippets/custom_metadata_item_info.html', fld_name='Package build request job ID', fld_value=pkg_dict.package_run_job_id) }}
+    {% endif %}
 {% endblock %}

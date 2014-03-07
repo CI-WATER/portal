@@ -27,6 +27,7 @@ setup(
         [ckan.plugins]
 	# Add plugins here, eg
 	#ciwater_custom_datasets=ckanext.customdataset.plugin:CustomDatasetsPlugin
+	ciwater_dataset_model_configuration=ckanext.customdataset.plugin:ModelConfigurationPlugin
 	ciwater_dataset_model_package=ckanext.customdataset.plugin:ModelPackagePlugin
     ciwater_dataset_multidimensional=ckanext.customdataset.plugin:MultidimensionalSpaceTimePlugin
     ciwater_dataset_geographic_feature_set=ckanext.customdataset.plugin:GeographicFeatureSetPlugin
