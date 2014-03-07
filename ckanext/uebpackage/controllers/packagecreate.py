@@ -3,6 +3,7 @@ import logging
 import ckan.plugins as p
 from ckan.lib.helpers import json
 from ckan.controllers import storage
+import ckan.lib.helpers as h
 from sqlalchemy import *
 from datetime import datetime
 import os
@@ -159,16 +160,21 @@ class PackagecreateController(base.BaseController):
 
 
 def _process_ueb_pkg_request_submit():
-    pkgname = base.session['stage_1']['pkgname']  
+    pkgname = base.session['stage_1']['pkgname']
+    selected_user_org = base.session['stage_1']['owner_org']
     ueb_pkg_request = _get_package_request_in_json_format() 
     selected_file_ids = ueb_pkg_request['selected_file_ids']
     ueb_pkg_request_in_json = ueb_pkg_request['ueb_req_json']  
-    ueb_model_pkg_request_resource_id = _save_ueb_request_as_resource(pkgname, selected_file_ids) 
+    #ueb_model_pkg_request_resource_id = _save_ueb_request_as_resource(pkgname, selected_file_ids)
+    model_configuration_pkg_id = _save_ueb_request_as_dataset(pkgname, selected_file_ids, selected_user_org)
     request_zip_file = _create_ueb_pkg_build_request_zip_file(ueb_pkg_request_in_json, selected_file_ids) 
-    pkg_process_id = _send_request_to_app_server(request_zip_file) 
-    _update_request_resource_process_job_id(ueb_model_pkg_request_resource_id, pkg_process_id)
+    pkg_process_id = _send_request_to_app_server(request_zip_file)
+    #_update_request_resource_process_job_id(ueb_model_pkg_request_resource_id, pkg_process_id)
     job_status_queue = uebhelper.StringSettings.app_server_job_status_in_queue
-    _update_request_resource_process_status(ueb_model_pkg_request_resource_id, job_status_queue)
+    data_dict = {'package_build_request_job_id': pkg_process_id, 'processing_status': job_status_queue}
+
+    #_update_request_resource_process_status(ueb_model_pkg_request_resource_id, job_status_queue)
+    uebhelper.update_package(model_configuration_pkg_id, data_dict)
     base.session.clear()        
     tk.c.request_process_job_id = pkg_process_id
     return tk.render('package_build_request_submission.html')
@@ -352,36 +358,23 @@ def _set_context_to_shape_file_resources():
     @return: None
     """
 
-    # note: resource_search returns a list of matching resources
-    # that can include any deleted resources
-    resource_search_action = tk.get_action('resource_search')
-    context = {'model': base.model, 'session': base.model.Session,
-               'user': tk.c.user or tk.c.author, 'for_view': True}
-    
-    # get the resource that has the format field set to zip and resource metadata in the extras column has ResourceType
-    # as "Shape File" and the resource_type is file.upload    
-    data_dict = {'query': ['format:zip', 'ResourceType:Shape File', 'resource_type:file.upload']}
-    shape_file_resources = resource_search_action(context, data_dict)['results']
-    
+    geographic_fs_datasets = uebhelper.get_packages_by_dataset_type('geographic-feature-set')
+
     # for each resource we need only the id (id be used as the selection value) and the name for display
     file_resources = []
     resource = {'id': 0, 'name': 'Select a shape file ..'}
     file_resources.append(resource)
-    for file_resource in shape_file_resources:
-        resource = {}
-        # filter out any deleted resources
-        active_resource = _get_resource(file_resource['id'])
-        if not active_resource:
-            continue            
+    for gfs_dataset in geographic_fs_datasets:
+        gfs_resources = gfs_dataset['resources']
+        for resource in gfs_resources:
+            if resource['format'].lower() == 'zip' and resource['resource_type'] == 'file.upload' and \
+                            resource['state'] == 'active':
+                # check if the file resource is owned by the current user
+                user_owns_resource = uebhelper.is_user_owns_resource(resource['id'], tk.c.user)
+                if user_owns_resource:
+                    selected_resource = {'id': resource['id'], 'name': resource['name']}
+                    file_resources.append(selected_resource)
 
-        # check if the file resource is owned by the current user
-        user_owns_resource = uebhelper.is_user_owns_resource(file_resource['id'], tk.c.user)
-
-        if user_owns_resource:
-            resource['id'] = file_resource['id']
-            resource['name'] = file_resource['name']
-            file_resources.append(resource)
-                   
     tk.c.ueb_domain_shape_files = file_resources    
 
 
@@ -550,7 +543,8 @@ def _validate_stage_one():
     startdate = tk.request.params['startdate']
     enddate = tk.request.params['enddate']
     timestep = tk.request.params['timestep']
-    
+    owner_org = tk.request.params['owner_org']
+
     data['pkgname'] = pkgname
     data['pkgdescription'] = pkgdescription
     data['domainfiletypeoption'] = domainfiletypeoption    
@@ -562,6 +556,7 @@ def _validate_stage_one():
     data['startdate'] = startdate
     data['enddate'] = enddate
     data['timestep'] = timestep
+    data['owner_org'] = owner_org
     
     for key in data:
         errors[key] = []
@@ -582,9 +577,16 @@ def _validate_stage_one():
                 lambda: not_empty_check('buffersize', data, errors, context),
                 lambda: not_empty_check('gridcellsize', data, errors, context),
                 lambda: not_empty_check('startdate', data, errors, context),
-                lambda: not_empty_check('enddate', data, errors, context)
+                lambda: not_empty_check('enddate', data, errors, context),
               ]
-    
+
+    if data['owner_org'] == '':
+        data['owner_org'] = None
+        try:
+            not_empty_check('owner_org', data, errors, context)
+        except:
+           pass
+
     if domainfiletypeoption == 'polygon':
         if data['domainshapefile'] == '0':
             data['domainshapefile'] = None
@@ -2382,9 +2384,10 @@ def _convert_month_name_to_month_number(month):
     return months.get(month, '00')
 
 
-def _save_ueb_request_as_resource(pkgname, selected_file_ids):
+def _save_ueb_request_as_dataset(pkgname, selected_file_ids, selected_user_org):
     """
-    create a ckan package/datatset with package title as the name of the ueb model package request
+    create a new ckan package/datatset of dataset type 'model-configuration'
+    with package title as the name of the ueb model package request
     save the package request information from the c object to a text file to a temporary dir
     and then add the file as a resource to the package created.    Also add all other files
     selected as inputs to build package as a resource in the same dataset
@@ -2392,8 +2395,8 @@ def _save_ueb_request_as_resource(pkgname, selected_file_ids):
     param pkgname: name of the package as entered by the user
     param selected_file_ids: a dict object containing name of files with their corresponding resource ids
     """
-    source = 'uebpackage.packagecreate._save_ueb_request_as_resource():'  
-    #ckan_default_dir = _get_predefined_name('ckan_user_session_temp_dir') #'/tmp/ckan'
+    source = 'uebpackage.packagecreate._save_ueb_request_as_dataset():'
+
     ckan_default_dir = uebhelper.StringSettings.ckan_user_session_temp_dir
     # create a directory for saving the file
     # this will be a dir in the form of: /tmp/ckan/{session id}/files
@@ -2406,8 +2409,7 @@ def _save_ueb_request_as_resource(pkgname, selected_file_ids):
     except Exception as e:          
         log.error(source + 'Failed to create temporary dir for shapefile: %s \n Exception: %s' % (destination_dir, e))
         tk.abort(400, _('Failed to create temporary dir: %s') % destination_dir)
-    
-    #ueb_request_text_file_name = _get_predefined_name('ueb_request_text_resource_file_name')
+
     ueb_request_text_file_name = uebhelper.StringSettings.ueb_request_text_resource_file_name
     request_resource_file = os.path.join(destination_dir, ueb_request_text_file_name)
     
@@ -2442,20 +2444,24 @@ def _save_ueb_request_as_resource(pkgname, selected_file_ids):
     
     # create a package
     package_create_action = tk.get_action('package_create')
-    
+
     # create unique package name using the current time stamp as a postfix to any package name
     unique_postfix = datetime.now().isoformat().replace(':', '-').replace('.', '-').lower()
     pkg_title = pkgname  # + '_'
+
     data_dict = {
-                    'name': 'ueb_model_package_' + unique_postfix,  # this needs to be unique as required by DB
-                    'title': pkg_title,  
-                    'author': tk.c.userObj.name if tk.c.userObj else tk.c.author,  # TODO: userObj is None always. Need to retrieve user full name
-                    'notes': 'This is a dataset consisting of UEB model package related resources',
-                    'extras': [{'key': 'DataSetType', 'value': 'UEB Model Package'},
-                               {'key': 'IsInputPackageAvailable', 'value': 'No'},
-                               {'key': 'IsOutputPackageAvailable', 'value': 'No'}]
+                    'name': 'model_configuration_' + unique_postfix,  # this needs to be unique as required by DB
+                    'type': 'model-configuration',  # dataset type as defined in custom dataset plugin
+                    'title': pkg_title,
+                    'owner_org': selected_user_org,
+                    'author': tk.c.user or tk.c.author,  # TODO: Need to retrieve user full name
+                    'notes': 'This is a dataset consisting of UEB model configuration related resources',
+                    'processing_status': 'In queue',
+                    'package_build_request_job_id': '',
+                    'model_name': 'UEB',
+                    'package_availability': uebhelper.StringSettings.app_server_job_status_package_not_available
                  }
-    
+
     context = {'model': base.model, 'session': base.model.Session, 'user': tk.c.user or tk.c.author, 'save': 'save'}
     try:
         pkg_dict = package_create_action(context, data_dict)
@@ -2485,11 +2491,9 @@ def _save_ueb_request_as_resource(pkgname, selected_file_ids):
         log.info(source + 'ueb_package request file was added as a resource for package name: %s' % pkgname)
     except Exception as e:
         log.error(source + 'Failed to add the ueb_model_package request file as a resource to a'
-                           ' new dataset for package: %s \n Excpetion: %s' % (pkgname, e))
+                           ' new dataset for package: %s \n Exception: %s' % (pkgname, e))
         tk.abort(400, _('Failed to add the ueb_model_package request file as a resource for package: %s') % pkgname) 
-    
-    reuest_text_file_resource_id = resource_add_dict['id']
-    
+
     # for each file id for the user selected files, get the file
     # object and add that to the package/dataset as a link resource
     resource_show_action = tk.get_action('resource_show')
@@ -2523,7 +2527,7 @@ def _save_ueb_request_as_resource(pkgname, selected_file_ids):
             tk.abort(400, _('Failed to add resource links to the dataset as part of the UEB model package'
                             ' request for package name: %s') % pkgname)
 
-    return reuest_text_file_resource_id
+    return pkg_id
 
 
 def _upload_file(file_path):

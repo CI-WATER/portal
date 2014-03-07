@@ -2,14 +2,12 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="7445eb22-3c5f-4a27-ac32-c39733b17129" name="Default" comment="Fixed the bug for listing files in ueb package builder and ueb run where files not owned by the user also used to get listed. Also new job status types returned from the app server were accounted for. The problem of App scheduler running at random interval was fixed.">
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/ckanext/uebpackage/templates/snippets/__init__.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/ckanext/uebpackage/templates/snippets/error_summary.html" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/ckanext/uebpackage/templates/snippets/file_selection_dropdown.html" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/ckanext/uebpackage/templates/snippets/form_field_error.html" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.idea/ckanext-uebpackage.iml" afterPath="$PROJECT_DIR$/.idea/ckanext-uebpackage.iml" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/ckanext/uebpackage/helpers.py" afterPath="$PROJECT_DIR$/ckanext/uebpackage/helpers.py" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/ckanext/uebpackage/controllers/packagecreate.py" afterPath="$PROJECT_DIR$/ckanext/uebpackage/controllers/packagecreate.py" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/ckanext/uebpackage/templates/packagecreateform.html" afterPath="$PROJECT_DIR$/ckanext/uebpackage/templates/packagecreateform.html" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/ckanext/uebpackage/plugin.py" afterPath="$PROJECT_DIR$/ckanext/uebpackage/plugin.py" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/ckanext/uebpackage/tasks.py" afterPath="$PROJECT_DIR$/ckanext/uebpackage/tasks.py" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/ckanext/uebpackage/controllers/uebexecute.py" afterPath="$PROJECT_DIR$/ckanext/uebpackage/controllers/uebexecute.py" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.idea/workspace.xml" afterPath="$PROJECT_DIR$/.idea/workspace.xml" />
     </list>
     <ignored path="ckanext-uebpackage.iws" />
@@ -33,31 +31,22 @@
   </component>
   <component name="FileEditorManager">
     <leaf>
-      <file leaf-file-name="plugin.py" pinned="false" current="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/ckanext/uebpackage/plugin.py">
+      <file leaf-file-name="packagecreate.py" pinned="false" current="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/ckanext/uebpackage/controllers/packagecreate.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state line="30" column="26" selection-start="1191" selection-end="1191" vertical-scroll-proportion="0.0" vertical-offset="540" max-vertical-offset="2772">
+            <state line="395" column="0" selection-start="18698" selection-end="18698" vertical-scroll-proportion="0.0" vertical-offset="7110" max-vertical-offset="46422">
+              <folding />
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file leaf-file-name="helpers.py" pinned="false" current="true" current-in-tab="true">
+        <entry file="file://$PROJECT_DIR$/ckanext/uebpackage/helpers.py">
+          <provider selected="true" editor-type-id="text-editor">
+            <state line="249" column="7" selection-start="9815" selection-end="9815" vertical-scroll-proportion="0.0" vertical-offset="4482" max-vertical-offset="6300">
               <folding>
-                <element signature="e#0#24#0" expanded="true" />
+                <element signature="e#0#28#0" expanded="true" />
               </folding>
-            </state>
-          </provider>
-        </entry>
-      </file>
-      <file leaf-file-name="error_summary.html" pinned="false" current="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/ckanext/uebpackage/templates/snippets/error_summary.html">
-          <provider selected="true" editor-type-id="text-editor">
-            <state line="0" column="0" selection-start="0" selection-end="0" vertical-scroll-proportion="-0.0" vertical-offset="0" max-vertical-offset="450">
-              <folding />
-            </state>
-          </provider>
-        </entry>
-      </file>
-      <file leaf-file-name="file_selection_dropdown.html" pinned="false" current="true" current-in-tab="true">
-        <entry file="file://$PROJECT_DIR$/ckanext/uebpackage/templates/snippets/file_selection_dropdown.html">
-          <provider selected="true" editor-type-id="text-editor">
-            <state line="0" column="0" selection-start="0" selection-end="0" vertical-scroll-proportion="0.0" vertical-offset="0" max-vertical-offset="666">
-              <folding />
             </state>
           </provider>
         </entry>
@@ -77,6 +66,11 @@
       </list>
     </option>
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
+    <option name="RECENT_BRANCH_BY_REPOSITORY">
+      <map>
+        <entry key="$PROJECT_DIR$" value="master" />
+      </map>
+    </option>
   </component>
   <component name="GitLogSettings">
     <option name="myStructureFilterPaths" />
@@ -92,9 +86,10 @@
     </option>
   </component>
   <component name="ProjectFrameBounds">
+    <option name="x" value="-1" />
     <option name="y" value="25" />
-    <option name="width" value="1680" />
-    <option name="height" value="1025" />
+    <option name="width" value="1922" />
+    <option name="height" value="1176" />
   </component>
   <component name="ProjectLevelVcsManager" settingsEditedManually="false">
     <OptionsSetting value="true" id="Add" />
@@ -191,54 +186,6 @@
               <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PsiDirectoryNode" />
             </PATH_ELEMENT>
             <PATH_ELEMENT>
-              <option name="myItemId" value="templates" />
-              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PsiDirectoryNode" />
-            </PATH_ELEMENT>
-          </PATH>
-          <PATH>
-            <PATH_ELEMENT>
-              <option name="myItemId" value="ckanext-uebpackage" />
-              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.ProjectViewProjectNode" />
-            </PATH_ELEMENT>
-            <PATH_ELEMENT>
-              <option name="myItemId" value="ckanext-uebpackage" />
-              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PsiDirectoryNode" />
-            </PATH_ELEMENT>
-            <PATH_ELEMENT>
-              <option name="myItemId" value="ckanext" />
-              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PsiDirectoryNode" />
-            </PATH_ELEMENT>
-            <PATH_ELEMENT>
-              <option name="myItemId" value="uebpackage" />
-              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PsiDirectoryNode" />
-            </PATH_ELEMENT>
-            <PATH_ELEMENT>
-              <option name="myItemId" value="templates" />
-              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PsiDirectoryNode" />
-            </PATH_ELEMENT>
-            <PATH_ELEMENT>
-              <option name="myItemId" value="snippets" />
-              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PsiDirectoryNode" />
-            </PATH_ELEMENT>
-          </PATH>
-          <PATH>
-            <PATH_ELEMENT>
-              <option name="myItemId" value="ckanext-uebpackage" />
-              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.ProjectViewProjectNode" />
-            </PATH_ELEMENT>
-            <PATH_ELEMENT>
-              <option name="myItemId" value="ckanext-uebpackage" />
-              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PsiDirectoryNode" />
-            </PATH_ELEMENT>
-            <PATH_ELEMENT>
-              <option name="myItemId" value="ckanext" />
-              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PsiDirectoryNode" />
-            </PATH_ELEMENT>
-            <PATH_ELEMENT>
-              <option name="myItemId" value="uebpackage" />
-              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PsiDirectoryNode" />
-            </PATH_ELEMENT>
-            <PATH_ELEMENT>
               <option name="myItemId" value="controllers" />
               <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PsiDirectoryNode" />
             </PATH_ELEMENT>
@@ -255,6 +202,22 @@
     <property name="options.splitter.details.proportions" value="0.2" />
     <property name="options.searchVisible" value="true" />
     <property name="WebServerToolWindowFactoryState" value="true" />
+    <property name="FileHistory.git4idea.history.GitHistoryProvider_flatWidth0" value="93" />
+    <property name="FileHistory.git4idea.history.GitHistoryProvider_flatOrder0" value="0" />
+    <property name="FileHistory.git4idea.history.GitHistoryProvider_flatWidth1" value="128" />
+    <property name="FileHistory.git4idea.history.GitHistoryProvider_flatOrder1" value="1" />
+    <property name="FileHistory.git4idea.history.GitHistoryProvider_flatWidth2" value="61" />
+    <property name="FileHistory.git4idea.history.GitHistoryProvider_flatOrder2" value="2" />
+    <property name="FileHistory.git4idea.history.GitHistoryProvider_flatWidth3" value="624" />
+    <property name="FileHistory.git4idea.history.GitHistoryProvider_flatOrder3" value="3" />
+    <property name="FileHistory.git4idea.history.GitHistoryProvider_treeWidth0" value="82" />
+    <property name="FileHistory.git4idea.history.GitHistoryProvider_treeOrder0" value="0" />
+    <property name="FileHistory.git4idea.history.GitHistoryProvider_treeWidth1" value="88" />
+    <property name="FileHistory.git4idea.history.GitHistoryProvider_treeOrder1" value="1" />
+    <property name="FileHistory.git4idea.history.GitHistoryProvider_treeWidth2" value="91" />
+    <property name="FileHistory.git4idea.history.GitHistoryProvider_treeOrder2" value="2" />
+    <property name="FileHistory.git4idea.history.GitHistoryProvider_treeWidth3" value="645" />
+    <property name="FileHistory.git4idea.history.GitHistoryProvider_treeOrder3" value="3" />
   </component>
   <component name="PyConsoleOptionsProvider">
     <option name="myPythonConsoleState">
@@ -458,7 +421,15 @@
       <created>1390500986460</created>
       <updated>1390500986460</updated>
     </task>
-    <option name="localTasksCounter" value="6" />
+    <task id="LOCAL-00006" summary="New helper method for getting a list of datasets (with resources) for a given dataset type. Shape files are now loaded for selection in UEB package build configuration based on dataset 'type' = 'geographic-feature-set' and resource file format = 'zip'.">
+      <created>1392416978319</created>
+      <updated>1392416978319</updated>
+    </task>
+    <task id="LOCAL-00007" summary="Added the extension pycharm iml fil2">
+      <created>1393567152328</created>
+      <updated>1393567152328</updated>
+    </task>
+    <option name="localTasksCounter" value="8" />
     <servers />
   </component>
   <component name="TodoView" selected-index="4">
@@ -482,29 +453,29 @@
     </todo-panel>
   </component>
   <component name="ToolWindowManager">
-    <frame x="0" y="25" width="1680" height="1025" extended-state="0" />
+    <frame x="-1" y="25" width="1922" height="1176" extended-state="0" />
     <editor active="false" />
     <layout>
-      <window_info id="Changes" active="true" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" weight="0.2579583" sideWeight="0.49938875" order="7" side_tool="false" content_ui="tabs" />
-      <window_info id="Terminal" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.37650934" sideWeight="0.49938875" order="7" side_tool="false" content_ui="tabs" />
+      <window_info id="Changes" active="true" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" weight="0.45386064" sideWeight="0.60809374" order="7" side_tool="false" content_ui="tabs" />
+      <window_info id="Terminal" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.46327683" sideWeight="0.60223645" order="7" side_tool="false" content_ui="tabs" />
       <window_info id="TODO" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.3295583" sideWeight="0.4996979" order="6" side_tool="false" content_ui="tabs" />
       <window_info id="Database" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="3" side_tool="false" content_ui="tabs" />
       <window_info id="Structure" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.25" sideWeight="0.5" order="1" side_tool="false" content_ui="tabs" />
       <window_info id="Remote Host" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="3" side_tool="false" content_ui="tabs" />
-      <window_info id="Project" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" weight="0.2616137" sideWeight="0.74178934" order="0" side_tool="false" content_ui="combo" />
+      <window_info id="Project" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" weight="0.27316293" sideWeight="0.74178934" order="0" side_tool="false" content_ui="combo" />
       <window_info id="Debug" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.4" sideWeight="0.5" order="3" side_tool="false" content_ui="tabs" />
       <window_info id="Favorites" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="2" side_tool="true" content_ui="tabs" />
-      <window_info id="Event Log" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" weight="0.2579583" sideWeight="0.50061125" order="7" side_tool="true" content_ui="tabs" />
+      <window_info id="Event Log" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" weight="0.45386064" sideWeight="0.3919063" order="7" side_tool="true" content_ui="tabs" />
       <window_info id="Run" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="2" side_tool="false" content_ui="tabs" />
-      <window_info id="Version Control" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.6140749" sideWeight="0.4996979" order="7" side_tool="false" content_ui="tabs" />
+      <window_info id="Version Control" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.47924528" sideWeight="0.49893504" order="7" side_tool="false" content_ui="tabs" />
       <window_info id="Cvs" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.25" sideWeight="0.5" order="4" side_tool="false" content_ui="tabs" />
       <window_info id="Message" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="0" side_tool="false" content_ui="tabs" />
-      <window_info id="Find" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="1" side_tool="false" content_ui="tabs" />
       <window_info id="Ant Build" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.25" sideWeight="0.5" order="1" side_tool="false" content_ui="tabs" />
+      <window_info id="Find" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="1" side_tool="false" content_ui="tabs" />
       <window_info id="Messages" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.3291714" sideWeight="0.4996979" order="7" side_tool="false" content_ui="tabs" />
       <window_info id="Commander" active="false" anchor="right" auto_hide="false" internal_type="SLIDING" type="SLIDING" visible="false" weight="0.4" sideWeight="0.5" order="0" side_tool="false" content_ui="tabs" />
-      <window_info id="Inspection" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.4" sideWeight="0.5" order="5" side_tool="false" content_ui="tabs" />
       <window_info id="Hierarchy" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.25" sideWeight="0.5" order="2" side_tool="false" content_ui="combo" />
+      <window_info id="Inspection" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.4" sideWeight="0.5" order="5" side_tool="false" content_ui="tabs" />
     </layout>
   </component>
   <component name="Vcs.Log.UiProperties">
@@ -520,24 +491,170 @@
     <option name="myTodoPanelSettings">
       <TodoPanelSettings />
     </option>
+    <option name="SHOW_FILE_HISTORY_DETAILS" value="false" />
     <MESSAGE value="Pycharm specific /.idea folder added" />
     <MESSAGE value="Fix to the problem of sending a bigger ueb model package to the app server." />
     <MESSAGE value="Fix to the problem of apache server going down due to sqlalchemy session pool limit problem as a result of running background scheduled tasks." />
     <MESSAGE value="Updated to allow user to select files as input for various variables/parameters of UEB when configuring the model to create a model package." />
     <MESSAGE value="Fixed the bug for listing files in ueb package builder and ueb run where files not owned by the user also used to get listed. Also new job status types returned from the app server were accounted for. The problem of App scheduler running at random interval was fixed." />
-    <option name="LAST_COMMIT_MESSAGE" value="Fixed the bug for listing files in ueb package builder and ueb run where files not owned by the user also used to get listed. Also new job status types returned from the app server were accounted for. The problem of App scheduler running at random interval was fixed." />
+    <MESSAGE value="New helper method for getting a list of datasets (with resources) for a given dataset type. Shape files are now loaded for selection in UEB package build configuration based on dataset 'type' = 'geographic-feature-set' and resource file format = 'zip'." />
+    <MESSAGE value="Added the extension pycharm iml fil2" />
+    <option name="LAST_COMMIT_MESSAGE" value="Added the extension pycharm iml fil2" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager />
   </component>
   <component name="editorHistoryManager">
-    <entry file="file://$PROJECT_DIR$/ckanext/uebpackage/plugin.py">
+    <entry file="file://$PROJECT_DIR$/ckanext/uebpackage/controllers/packagecreate.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state line="30" column="26" selection-start="1191" selection-end="1191" vertical-scroll-proportion="0.0" vertical-offset="540" max-vertical-offset="2772">
+        <state line="395" column="0" selection-start="18698" selection-end="18698" vertical-scroll-proportion="0.0" vertical-offset="0" max-vertical-offset="46422">
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/ckanext/uebpackage/helpers.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="249" column="7" selection-start="9815" selection-end="9815" vertical-scroll-proportion="0.0" vertical-offset="4482" max-vertical-offset="6300">
           <folding>
-            <element signature="e#0#24#0" expanded="true" />
+            <element signature="e#0#28#0" expanded="true" />
           </folding>
         </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/ckanext/uebpackage/controllers/packagecreate.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="395" column="27" selection-start="18540" selection-end="18540" vertical-scroll-proportion="0.0" vertical-offset="0" max-vertical-offset="46350">
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/ckanext/uebpackage/helpers.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="249" column="7" selection-start="9466" selection-end="9466" vertical-scroll-proportion="0.0" vertical-offset="108" max-vertical-offset="4968">
+          <folding>
+            <element signature="e#0#28#0" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/ckanext/uebpackage/controllers/packagecreate.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="395" column="27" selection-start="18540" selection-end="18540" vertical-scroll-proportion="0.0" vertical-offset="0" max-vertical-offset="46350">
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/ckanext/uebpackage/helpers.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="0" column="0" selection-start="0" selection-end="0" vertical-scroll-proportion="0.0" vertical-offset="4293" max-vertical-offset="4968">
+          <folding>
+            <element signature="e#0#28#0" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/ckanext/uebpackage/plugin.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="30" column="26" selection-start="1230" selection-end="1230" vertical-scroll-proportion="0.0" vertical-offset="0" max-vertical-offset="2772" />
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/ckanext/uebpackage/controllers/packagecreate.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="346" column="4" selection-start="16413" selection-end="16413" vertical-scroll-proportion="0.0" vertical-offset="6432" max-vertical-offset="46350">
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/ckanext/uebpackage/helpers.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="0" column="0" selection-start="0" selection-end="0" vertical-scroll-proportion="0.0" vertical-offset="0" max-vertical-offset="4968">
+          <folding>
+            <element signature="e#0#28#0" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/ckanext/uebpackage/plugin.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="30" column="26" selection-start="1230" selection-end="1230" vertical-scroll-proportion="0.0" vertical-offset="0" max-vertical-offset="2772" />
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/ckanext/uebpackage/controllers/packagecreate.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="346" column="4" selection-start="16413" selection-end="16413" vertical-scroll-proportion="0.0" vertical-offset="6432" max-vertical-offset="46350">
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/ckanext/uebpackage/helpers.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="0" column="0" selection-start="0" selection-end="0" vertical-scroll-proportion="0.0" vertical-offset="0" max-vertical-offset="4968">
+          <folding>
+            <element signature="e#0#28#0" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/ckanext/uebpackage/plugin.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="30" column="26" selection-start="1193" selection-end="1193" vertical-scroll-proportion="0.0" vertical-offset="0" max-vertical-offset="2772" />
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/ckanext/uebpackage/controllers/packagecreate.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="346" column="4" selection-start="16413" selection-end="16413" vertical-scroll-proportion="0.0" vertical-offset="6432" max-vertical-offset="46350">
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/ckanext/uebpackage/helpers.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="0" column="0" selection-start="0" selection-end="0" vertical-scroll-proportion="0.0" vertical-offset="1674" max-vertical-offset="4968">
+          <folding>
+            <element signature="e#0#28#0" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/ckanext/uebpackage/plugin.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="30" column="26" selection-start="1193" selection-end="1193" vertical-scroll-proportion="0.0" vertical-offset="0" max-vertical-offset="2772" />
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/ckanext/uebpackage/controllers/packagecreate.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="346" column="4" selection-start="16413" selection-end="16413" vertical-scroll-proportion="0.0" vertical-offset="6432" max-vertical-offset="46350">
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/ckanext/uebpackage/helpers.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="0" column="0" selection-start="0" selection-end="0" vertical-scroll-proportion="0.0" vertical-offset="1674" max-vertical-offset="4968">
+          <folding>
+            <element signature="e#0#28#0" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/ckanext/uebpackage/plugin.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="30" column="26" selection-start="1193" selection-end="1193" vertical-scroll-proportion="0.0" vertical-offset="540" max-vertical-offset="2610" />
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/ckanext/uebpackage/plugin.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="30" column="26" selection-start="1191" selection-end="1191" vertical-scroll-proportion="0.0" vertical-offset="0" max-vertical-offset="2772" />
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/ckanext/uebpackage/plugin.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="30" column="26" selection-start="1191" selection-end="1191" vertical-scroll-proportion="0.0" vertical-offset="540" max-vertical-offset="2772" />
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/ckanext/uebpackage/plugin.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="30" column="26" selection-start="1191" selection-end="1191" vertical-scroll-proportion="0.0" vertical-offset="540" max-vertical-offset="2772" />
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/ckanext/uebpackage/controllers/uebexecute.py">
@@ -555,26 +672,49 @@
         <state line="0" column="0" selection-start="0" selection-end="0" vertical-scroll-proportion="0.0" vertical-offset="0" max-vertical-offset="720" />
       </provider>
     </entry>
+    <entry file="file://$PROJECT_DIR$/.idea/inspectionProfiles/profiles_settings.xml">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="0" column="0" selection-start="0" selection-end="0" vertical-scroll-proportion="0.0" vertical-offset="0" max-vertical-offset="470" />
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/.idea/workspace.xml">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="0" column="0" selection-start="0" selection-end="0" vertical-scroll-proportion="0.0" vertical-offset="0" max-vertical-offset="10440" />
+      </provider>
+    </entry>
     <entry file="file://$PROJECT_DIR$/ckanext/uebpackage/plugin.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state line="30" column="26" selection-start="1191" selection-end="1191" vertical-scroll-proportion="0.0" vertical-offset="540" max-vertical-offset="2772">
+        <state line="30" column="26" selection-start="1230" selection-end="1230" vertical-scroll-proportion="0.739726" vertical-offset="0" max-vertical-offset="2610" />
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/ckanext/uebpackage/tasks.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="0" column="0" selection-start="0" selection-end="0" vertical-scroll-proportion="-10.026717" vertical-offset="5254" max-vertical-offset="9396" />
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/ckanext/uebpackage/controllers/packagecreate.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="395" column="0" selection-start="18698" selection-end="18698" vertical-scroll-proportion="0.0" vertical-offset="7110" max-vertical-offset="46422">
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/.idea/ckanext-uebpackage.iml">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="0" column="0" selection-start="0" selection-end="0" vertical-scroll-proportion="0.0" vertical-offset="0" max-vertical-offset="610" />
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/.gitignore">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="0" column="0" selection-start="0" selection-end="0" vertical-scroll-proportion="0.0" vertical-offset="0" max-vertical-offset="756" />
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/ckanext/uebpackage/helpers.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="249" column="7" selection-start="9815" selection-end="9815" vertical-scroll-proportion="0.0" vertical-offset="4482" max-vertical-offset="6300">
           <folding>
-            <element signature="e#0#24#0" expanded="true" />
+            <element signature="e#0#28#0" expanded="true" />
           </folding>
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/ckanext/uebpackage/templates/snippets/error_summary.html">
-      <provider selected="true" editor-type-id="text-editor">
-        <state line="0" column="0" selection-start="0" selection-end="0" vertical-scroll-proportion="0.0" vertical-offset="0" max-vertical-offset="649">
-          <folding />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/ckanext/uebpackage/templates/snippets/file_selection_dropdown.html">
-      <provider selected="true" editor-type-id="text-editor">
-        <state line="0" column="0" selection-start="0" selection-end="0" vertical-scroll-proportion="0.0" vertical-offset="0" max-vertical-offset="666">
-          <folding />
         </state>
       </provider>
     </entry>

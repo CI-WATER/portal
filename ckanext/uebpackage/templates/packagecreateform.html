@@ -4,6 +4,7 @@
 {% set data = data or {} %}
 {% set errors = errors or {} %}
 {% set stages = stages or {} %}
+{% set organizations_available = h.organizations_available('create_dataset') %}
 {% set action = form_action or h.url_for(controller ='ckanext.uebpackage.controllers.packagecreate:PackagecreateController', action ='submit') %}
 
 {% block subtitle %}{{ _('UEB Package Create Request') }}{% endblock %}
@@ -75,7 +76,24 @@
 	      				<i class="icon-info-sign"></i>
 	      				{{ _('Your request for creating a UEB model package will be put into a queue.') }}
 	    			</span>
+                    <br />
 		    	{% endblock %}
+                {% block organization_selection %}
+                    {%  set selected_org = data.owner_org %}
+                    <div class="control-group, control-medium">
+                      <label for="field-organizations" class="control-label">{{ _('Organization where model configration will be saved') }}</label>
+                      <div class="controls">
+                        <select id="field-organizations" name="owner_org" data-module="autocomplete" >
+                          <option value="" {% if not selected_org and data.id %} selected="selected" {% endif %}>{{ _('Select an organization...') }}</option>
+                          {% for organization in organizations_available %}
+                            {# get out first org from users list only if there is not an existing org #}
+                            {# {% set selected_org = (existing_org and existing_org == organization.id) or (not existing_org and not data.id and organization.id == organizations_available[0].id) %}#}
+                            <option value="{{ organization.id }}" {% if selected_org  and selected_org == organization.id %} selected="selected" {% endif %}>{{ organization.name }}</option>
+                          {% endfor %}
+                        </select>
+                    </div>
+                {%  endblock %}
+
 		    	{% block ueb_pkg_setup_heading %}
 		    		<h4>{{ _('Step-1:Set Domain') }}</h4>
 		    	{% endblock %}

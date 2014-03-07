@@ -2,6 +2,7 @@ import ckan.lib.base as base
 import logging
 import ckan.plugins as p
 from ckan.lib.helpers import json
+import ckan.lib.helpers as h
 import httplib
 import time
 from .. import helpers as uebhelper
@@ -39,11 +40,11 @@ class UEBexecuteController(base.BaseController):
         # Update the status of the model pkg to record this JobID        
         source = 'uebpackage.uebexecute.execute():'
         resource_show_action = tk.get_action('resource_show')
-        ueb_model_pkg_CKAN_id = tk.request.params['uebpkgfile_id']  
+        ueb_model_pkg_resource_id = tk.request.params['uebpkgfile_id']
         context = {'model': base.model, 'session': base.model.Session,
                    'user': tk.c.user or tk.c.author}
 
-        data_dict = {'id': ueb_model_pkg_CKAN_id}
+        data_dict = {'id': ueb_model_pkg_resource_id}
         try:
             matching_file_resource = resource_show_action(context, data_dict)
             file_url = matching_file_resource.get('url')
@@ -94,19 +95,65 @@ class UEBexecuteController(base.BaseController):
             connection.close()
             log.error(source + 'App server error: Request to run UEB failed: %s' % service_call_results.reason)
             tk.abort(400, _('App server error: Request to run UEB failed: %s' % service_call_results.reason))
-        
-        if self._update_ueb_model_pkg_run_job_id(ueb_model_pkg_CKAN_id, ueb_run_job_id) is None:
-            tk.abort(400, _('CKAN error: Failed to update UEB input model package resource job ID.'))
+
+        # get the dataset of the model pkg zip file and update it
+        model_pkg_dataset_of_pkg_resource = uebhelper.get_package_for_resource(ueb_model_pkg_resource_id)
+        if self._update_ueb_model_pkg_run_job_id(model_pkg_dataset_of_pkg_resource['id'], ueb_run_job_id) is None:
+            tk.abort(400, _('CKAN error: Failed to update UEB model package dataset job ID.'))
 
         job_status_processing = uebhelper.StringSettings.app_server_job_status_processing
-        if self._update_ueb_model_pkg_run_status(ueb_model_pkg_CKAN_id, job_status_processing) is None:
-            tk.abort(400, _('CKAN error: Failed to update UEB input model package resource status.'))
+        if self._update_ueb_model_pkg_run_status(model_pkg_dataset_of_pkg_resource['id'], job_status_processing) is None:
+            tk.abort(400, _('CKAN error: Failed to update UEB model package dataset run status.'))
         else:
             base.session.clear()
             tk.c.ueb_run_job_id = ueb_run_job_id
             return tk.render('ueb_run_request_submission.html')
 
     def _set_context_to_user_input_model_packages(self):
+        # get all datasets of type model-package
+        model_pkg_datasets = uebhelper.get_packages_by_dataset_type('model-package')
+
+        # for each resource we need only the id (id be used as the selection value) and the name for display
+        file_resources = []
+
+        for dataset in model_pkg_datasets:
+            pkg_run_job_id = h.get_pkg_dict_extra(dataset, 'package_run_job_id')
+            if pkg_run_job_id is None:
+                continue
+
+            # to get the package_type value which is a tag, use the get_package() of my the helper module
+            pkg_dict = uebhelper.get_package(dataset['id'])
+            pkg_type = pkg_dict['package_type'][0]
+            if len(pkg_run_job_id) != 0:
+                continue
+            if pkg_type == u'Complete':
+                continue
+
+            # check if the dataset is owned by the current user
+            dataset_id = dataset['id']
+            if not uebhelper.is_user_owns_package(dataset_id, tk.c.user) and \
+                    not uebhelper.is_user_owns_package(dataset_id, 'default'):
+                continue
+
+            # get model package zip file resource from the dataset and we assume the dataset has only one resource
+            model_pkg_resource = dataset['resources'][0]
+            dataset_title = dataset['title']
+            max_len = 50
+            if len(dataset_title) > max_len:
+                dataset_title = dataset_title[:max_len] + '...'
+
+            dataset_title = ' (' + dataset_title + ')'
+            resource = {}
+            resource['id'] = model_pkg_resource['id']
+            resource['url'] = model_pkg_resource['url']
+            resource['name'] = model_pkg_resource['name'] + dataset_title
+            resource['description'] = model_pkg_resource['description']
+            file_resources.append(resource)
+
+        tk.c.ueb_input_model_packages = file_resources
+
+    # TODO: the following function should be deleted once the function above tested to be working
+    def _set_context_to_user_input_model_packages_old(self):
         # note: resource_search returns a list of matching resources
         # that can include any deleted resources
         resource_search_action = tk.get_action('resource_search')
@@ -157,7 +204,34 @@ class UEBexecuteController(base.BaseController):
                        
         tk.c.ueb_input_model_packages = file_resources  
     
-    def _update_ueb_model_pkg_run_job_id(self, ueb_model_pkg_CKAN_resource_id, run_job_id):
+    def _update_ueb_model_pkg_run_job_id(self, ueb_model_pkg_dataset_id, run_job_id):
+
+        """
+        Updates a ueb model package dataset's package_run_job_id custom field
+
+        ueb_model_pkg_dataset_id: id of the model package dataset to be updated
+        param run_job_id: ueb run job id returned from app server responsible for running ueb
+        @rtype: updated model package dataset dictionary if successful otherwise None
+
+        """
+        data_dict = {'package_run_job_id': run_job_id}
+        update_msg = 'system auto updated model package dataset'
+        background_task = True
+        updated_package = None
+        try:
+            updated_package = uebhelper.update_package(ueb_model_pkg_dataset_id, data_dict, update_msg, background_task)
+            log.info('Model package dataset was updated as a result of '
+                              'receiving model input package for dataset:%s' % updated_package['name'])
+        except Exception as e:
+            log.error('Failed to update model package dataset after '
+                               'receiving model input package for dataset ID:%s \n'
+                               'Exception: %s' % (ueb_model_pkg_dataset_id, e))
+            pass
+
+        return updated_package
+
+    # TODO: the following function needs to be deleted after the above function has been tested
+    def _update_ueb_model_pkg_run_job_id_old(self, ueb_model_pkg_CKAN_resource_id, run_job_id):
     
         """
         Updates a ueb model package request resource's 'extras' field to include
@@ -184,8 +258,35 @@ class UEBexecuteController(base.BaseController):
         data_dict = {'RunJobID': run_job_id}
         updated_resource = uebhelper.update_resource(ueb_model_pkg_CKAN_resource_id, data_dict)
         return updated_resource  
-    
-    def _update_ueb_model_pkg_run_status(self, ueb_model_pkg_CKAN_resource_id, status):
+
+    def _update_ueb_model_pkg_run_status(self, ueb_model_pkg_dataset_id, status):
+
+        """
+        Updates a ueb model package dataset's package_run_job_id custom field
+
+        ueb_model_pkg_dataset_id: id of the model package dataset to be updated
+        param run_job_id: ueb run job id returned from app server responsible for running ueb
+        @rtype: updated model package dataset dictionary if successful otherwise None
+
+        """
+        data_dict = {'package_run_status': status}
+        update_msg = 'system auto updated model package dataset'
+        background_task = True
+        updated_package = None
+        try:
+            updated_package = uebhelper.update_package(ueb_model_pkg_dataset_id, data_dict, update_msg, background_task)
+            log.info('Model package dataset was updated as a result of '
+                              'receiving model run status update from app server for dataset:%s' % updated_package['name'])
+        except Exception as e:
+            log.error('Failed to update model package dataset after '
+                               'receiving model run status update from app server for dataset ID:%s \n'
+                               'Exception: %s' % (ueb_model_pkg_dataset_id, e))
+            pass
+
+        return updated_package
+
+    # TODO: The following function need to be deleted once the above function seems to work
+    def _update_ueb_model_pkg_run_status_old(self, ueb_model_pkg_CKAN_resource_id, status):
 
         """
         Updates a ueb model package request resource's 'extras' field to include

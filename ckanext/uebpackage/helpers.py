@@ -42,7 +42,8 @@ class StringSettings(object):
     app_server_job_status_processing = 'Processing'
     app_server_job_status_in_queue = 'In queue'
     app_server_job_status_error = 'Error'
-    app_server_job_status_package_available = 'Package available'
+    app_server_job_status_package_available = 'Available'
+    app_server_job_status_package_not_available = 'Not available'
 
 
 def _register_translator():
@@ -95,6 +96,40 @@ def is_user_owns_resource(resource_id, username):
         return False
 
 
+def is_user_owns_package(package_id, username):
+    """
+    check if a given user identified by the username owns a given dataset/package
+    identified by package_id. Returns True if owns otherwise False
+
+    @param package_id: id of the dataset/package
+    @param username: user name of the user
+    @return: True or False
+    """
+
+    package_obj = base.model.Package.get(package_id)
+    package_role_table = table('package_role')
+    user_object_role_table = table('user_object_role')
+
+    # setting the field context == 'Package' and field role=='admin' of the
+    # user_object_role table gives us the id of the user who owns (uploaded) a given resource
+    sql = select([user_object_role_table.c.user_id], from_obj=[package_role_table.join(user_object_role_table)]).\
+        where(package_role_table.c.package_id == package_obj.id).\
+        where(user_object_role_table.c.context == 'Package').where(user_object_role_table.c.role == 'admin')
+
+    # the following query execution gives us a list containing one user id (since there
+    # can be only one owner for a given dataset) for the user
+    # who have ownership for the provided package_id
+    query_result = base.model.Session.execute(sql).first()
+    if query_result:
+        package_owner_id = query_result[0]
+        resource_owner = base.model.User.get(unicode(package_owner_id))
+        if resource_owner:
+            if resource_owner.name == username:
+                return True
+            else:
+                return False
+    else:
+        return False
 def update_resource(resource_id, data_dict, update_message=None, backgroundTask=False):
     """
     Updates a resource identified by resource_id
@@ -165,7 +200,7 @@ def update_package(package_id, data_dict, update_message=None, backgroundTask=Fa
     context = {'model': base.model, 'session': base.model.Session}
     
     if update_message:
-       context['message'] =  update_message
+       context['message'] = update_message
     
     try:
         context['user'] = tk.c.user or tk.c.author
@@ -202,13 +237,24 @@ def get_package(pkg_id_or_name):
     source = 'uebpackage.helpers.get_package():'
     package_show_action = tk.get_action('package_show')
     context = {'model': base.model, 'session': base.model.Session}
-    
+
+    try:
+        context['user'] = tk.c.user or tk.c.author
+    except:
+        user = get_site_user()
+        context['user'] = user.get('name')
+        context['ignore_auth'] = True
+        log.info(source + 'Register translator object for the background job')
+        _register_translator()
+        log.info(source + 'Translator object was registered for the background job')
+        pass
+
     # get the resource that has the id equal to the given resource id or name
     data_dict = {'id': pkg_id_or_name}
     try:
-        matching_package_with_resources = package_show_action(context, data_dict)  
-    except tk.ObjectNotFound:  # dataset does not exist or has been deleted
-        log.error(source + 'No dataset was found for dataset ID: %s' % pkg_id_or_name)
+        matching_package_with_resources = package_show_action(context, data_dict)
+    except Exception as e:
+        log.error(source + 'No dataset was found for dataset ID: %s. Exception:%s ' % (pkg_id_or_name, e))
         matching_package_with_resources = None
         pass
     
@@ -229,13 +275,41 @@ def get_package_for_resource(resource_id):
     return package_dict
 
 
+def get_packages(search_data_dict):
+
+    # query_string = ''
+    # for key, value in search_data_dict.items():
+    #     if len(query_string) > 0:
+    #         query_string += ' AND ' + key + ':' + '"' + value + '"'
+    #     else:
+    #         query_string += key + ':' + value
+    #
+    context = {'model': base.model, 'session': base.model.Session}
+    # data_dict = {'q': query_string}
+
+    matching_packages = tk.get_action('package_search')(context, search_data_dict)
+
+    return matching_packages['results']
+
+def get_packages_by_dataset_type(dataset_type='dataset'):
+    """
+    Gets a list of packages for a given dataset type
+    @param dataset_type: type of dataset
+    @return: a list of package-dicts
+    """
+    context = {'model': base.model, 'session': base.model.Session}
+    data_dict = {'q': 'type:' + dataset_type}
+    matching_packages = tk.get_action('package_search')(context, data_dict)
+    return matching_packages['results']
+
+
 def get_resource(resource_id):
     source = 'uebpackage.helpers.get_resource():'
     resource_show_action = tk.get_action('resource_show')
     context = {'model': base.model, 'session': base.model.Session}
     
     # get the resource that has the id equal to the given resource id
-    data_dict = {'id': resource_id }
+    data_dict = {'id': resource_id}
     try:
         matching_resource = resource_show_action(context, data_dict)
     except tk.ObjectNotFound: #resource does not exist or has been deleted

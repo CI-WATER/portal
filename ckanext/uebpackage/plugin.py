@@ -23,7 +23,9 @@ class UEBScheduler(object):
         # the scheduler will miss a job run between every 2 actual runs. The log will show a message like
         # "skipped: maximum number of running instances reached (1)" each time it misses a run.
         # That's why the interval is set to half of the actual interval we want the job to run.
-        interval = 60   # Note change the value from 60 to 15. the job actually will be run at an interval of interval * 2 minutes
+        # Note this should always be set to 15 to get an interval of 30 min.
+        # the job actually will be run at an interval of interval * 2 minutes
+        interval = 15
 
         @scheduler.interval_schedule(minutes=interval)  # @scheduler.interval_schedule(minutes=interval, max_instances=1)
         def run_jobs():
