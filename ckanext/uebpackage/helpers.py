@@ -68,8 +68,12 @@ def is_user_owns_resource(resource_id, username):
     @param username: user name of the user
     @return: True or False
     """
-
+    source = 'uebpackage.helpers.is_user_owns_resource()'
     resource_obj = base.model.Resource.get(resource_id)
+    if not resource_obj:
+        log.info(source + 'Resource object was not found for resource ID:%s', resource_id)
+        return False
+
     related_pkg_obj = resource_obj.resource_group.package
     package_role_table = table('package_role')
     user_object_role_table = table('user_object_role')
