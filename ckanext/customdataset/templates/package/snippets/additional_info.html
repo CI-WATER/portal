@@ -89,4 +89,8 @@
     {% if pkg_dict.package_run_job_id %}
         {{ h.snippet('package/snippets/custom_metadata_item_info.html', fld_name='Package build request job ID', fld_value=pkg_dict.package_run_job_id) }}
     {% endif %}
+
+    {% if pkg_dict.package_availability %}
+        {{ h.snippet('package/snippets/custom_metadata_item_info.html', fld_name='Package availability', fld_value=pkg_dict.package_availability) }}
+    {% endif %}
 {% endblock %}
