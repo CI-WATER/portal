@@ -51,6 +51,7 @@ def check_ueb_request_process_status():
 
     for dataset in model_config_datasets_with_status_processing_or_in_queue:
         pkg_process_job_id = h.get_pkg_dict_extra(dataset, 'package_build_request_job_id')
+        pkg_current_processing_status = h.get_pkg_dict_extra(dataset, 'processing_status')
         dataset_id = dataset['id']
         service_request_url = service_request_api_url + '?packageID=' + pkg_process_job_id
         connection.request('GET', service_request_url)
@@ -67,9 +68,10 @@ def check_ueb_request_process_status():
 
         connection.close()
 
-        # update the dataset
-        data_dict = {'processing_status': request_processing_status}
-        uebhelper.update_package(dataset_id, data_dict, backgroundTask=True)
+        # update the dataset if the status has changed
+        if pkg_current_processing_status != request_processing_status:
+            data_dict = {'processing_status': request_processing_status}
+            uebhelper.update_package(dataset_id, data_dict, backgroundTask=True)
 
 
 def check_ueb_run_status():
@@ -143,6 +145,10 @@ def retrieve_ueb_packages():
                  % (job_status_complete, len(model_config_datasets_with_status_complete)))
 
     for dataset in model_config_datasets_with_status_complete:
+        pkg_availability_status = h.get_pkg_dict_extra(dataset, 'package_availability')
+        if pkg_availability_status == uebhelper.StringSettings.app_server_job_status_package_available:
+            continue
+
         pkg_process_job_id = h.get_pkg_dict_extra(dataset, 'package_build_request_job_id')
         dataset_id = dataset['id']
         package_availability_status = h.get_pkg_dict_extra(dataset, 'package_availability')
@@ -160,12 +166,11 @@ def retrieve_ueb_packages():
             log.info(source + 'UEB model package was received from App server for PackageJobID:%s' % pkg_process_job_id)
             try:
                 _save_ueb_package_as_dataset(service_call_results, dataset_id)
+                pkg_availability_status = uebhelper.StringSettings.app_server_job_status_package_available
             except Exception as e:
                 log.error(source + 'Failed to save ueb model package as a new dataset '
                                    'for model configuration dataset ID:%s\nException:%s' % (dataset_id, e))
-                break
-
-            pkg_availability_status = uebhelper.StringSettings.app_server_job_status_package_available
+                pkg_availability_status = uebhelper.StringSettings.app_server_job_status_error
         else:
             log.error(source + 'HTTP status %d returned from App server when retrieving '
                                'UEB model package for PackageJobID:'
@@ -198,7 +203,6 @@ def retrieve_ueb_run_output_packages():
     #service_request_api_url = '/api/UEBModelRunOutput'
     service_request_api_url = uebhelper.StringSettings.app_server_api_get_ueb_run_output
     connection = httplib.HTTPConnection(service_host_address)
-    job_status_complete = uebhelper.StringSettings.app_server_job_status_success
 
     # get all datasets of type model-package
     model_pkg_datasets = uebhelper.get_packages_by_dataset_type('model-package')
@@ -214,7 +218,7 @@ def retrieve_ueb_run_output_packages():
         if len(pkg_run_job_id) == 0:
             continue
         if pkg_type == u'Complete':
-                continue
+            continue
 
         pkg_run_status = h.get_pkg_dict_extra(dataset, 'package_run_status')
         if pkg_run_status != uebhelper.StringSettings.app_server_job_status_success:
@@ -350,13 +354,13 @@ def _save_ueb_package_as_dataset(service_call_results, model_config_dataset_id):
 
     context = {'model': base.model, 'session': base.model.Session, 'ignore_auth': True, 'user': user.get('name'), 'save': 'save'}
     try:
+        uebhelper.register_translator()     # this is needed since we are creating a package in a background operation
         pkg_dict = package_create_action(context, data_dict)
         log.info(source + 'A new dataset was created for UEB input model package with name: %s' % data_dict['title'])
     except Exception as e:
         log.error(source + 'Failed to create a new dataset for ueb input model package for'
                            ' the related model configuration dataset title: %s \n Exception: %s' % (pkg_title, e))
-        tk.abort(400, _('Failed to create a new dataset for UEB input model package '
-                        'for the related model config dataset with title: %s') % pkg_title)
+        return
 
     pkg_id = pkg_dict['id']
     #A value for key 'message" in the context must be set to

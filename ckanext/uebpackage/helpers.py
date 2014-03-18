@@ -40,13 +40,13 @@ class StringSettings(object):
     app_server_api_get_ueb_run_output = '/api/UEBModelRunOutput'
     app_server_job_status_success = 'Success'
     app_server_job_status_processing = 'Processing'
-    app_server_job_status_in_queue = 'In queue'
+    app_server_job_status_in_queue = 'In Queue'
     app_server_job_status_error = 'Error'
     app_server_job_status_package_available = 'Available'
     app_server_job_status_package_not_available = 'Not available'
 
 
-def _register_translator():
+def register_translator():
     from paste.registry import Registry
     import pylons
     registry = Registry()
@@ -153,7 +153,7 @@ def update_resource(resource_id, data_dict, update_message=None, backgroundTask=
     source = 'uebpackage.helpers.update_resource():'
     if backgroundTask:
         log.info(source + 'Register translator object for the background job')
-        _register_translator()
+        register_translator()
         log.info(source + 'Translator object was registered for the background job')
         
     matching_resource = get_resource(resource_id)
@@ -192,7 +192,7 @@ def update_package(package_id, data_dict, update_message=None, backgroundTask=Fa
     source = 'uebpackage.helpers.update_package():'
     if backgroundTask:
         log.info(source + 'Register translator object for the background job')
-        _register_translator()
+        register_translator()
         log.info(source + 'Translator object was registered for the background job')
         
     matching_package = get_package(package_id)
@@ -249,7 +249,7 @@ def get_package(pkg_id_or_name):
         context['user'] = user.get('name')
         context['ignore_auth'] = True
         log.info(source + 'Register translator object for the background job')
-        _register_translator()
+        register_translator()
         log.info(source + 'Translator object was registered for the background job')
         pass
 
