@@ -1,6 +1,7 @@
 __author__ = 'pabitra'
 import ckan.plugins as p
 import ckan.plugins.toolkit as tk
+from ckan.logic.action.update import package_update
 
 # ref: see this link below for explanation of validation functions
 # http://pylonsbook.com/en/1.1/working-with-forms-and-validators.html
@@ -38,6 +39,56 @@ def guess_package_type(expecting_name=False):
 
         return pt
 
+
+def pkg_update(context, data_dict):
+
+    # Here we are doing custom update for only 2 dataset types ('model-package' and 'model-configuration')
+    # These 2 dataset types have metadata elements that are populated by the system only. That's why this custom
+    # update is needed in order to be able to edit these 2 types of datasets as some of the metadata elements are not
+    # exposed to the UI for user to update since there are supposed to be populated by the system.
+
+    log.debug('my very own package_update() called')
+
+    # get the already saved package
+    orig_pkg = p.toolkit.get_action('package_show')(context, data_dict)
+
+    # find the type pf package/dataset
+    pkg_type = orig_pkg.get('type', None)
+    if pkg_type is None:
+        return package_update(context, data_dict)
+
+    if pkg_type == 'model-package':
+        if data_dict.get('package_run_status', None) is None:
+            if orig_pkg.get('package_run_status', None):
+                data_dict['package_run_status'] = orig_pkg['package_run_status']
+            else:
+                data_dict['package_run_status'] = 'Not yet submitted'
+
+        if data_dict.get('package_run_job_id', None) is None:
+            if orig_pkg.get('package_run_job_id', None):
+                data_dict['package_run_job_id'] = orig_pkg['package_run_job_id']
+            else:
+                data_dict['package_run_job_id'] = ' '
+    elif pkg_type == 'model-configuration':
+        if data_dict.get('model_name', None) is None:
+            data_dict['model_name'] = orig_pkg['model_name']
+
+        if data_dict.get('processing_status', None) is None:
+            data_dict['processing_status'] = orig_pkg['processing_status']
+
+        if data_dict.get('package_build_request_job_id', None) is None:
+            if orig_pkg.get('package_build_request_job_id', None):
+                data_dict['package_build_request_job_id'] = orig_pkg['package_build_request_job_id']
+            else:
+                data_dict['package_build_request_job_id'] = ''
+
+        if data_dict.get('package_availability', None) is None:
+            if orig_pkg.get('package_availability', None):
+                data_dict['package_availability'] = orig_pkg['package_availability']
+            else:
+                data_dict['package_availability'] = 'Not available'
+
+    return package_update(context, data_dict)
 
 def create_country_codes():
     '''Create country_codes vocab and tags, if they don't exist already.
@@ -123,6 +174,10 @@ class _BaseDataset(tk.DefaultDatasetForm):
     p.implements(p.IConfigurer, inherit=True)
     p.implements(p.IFacets, inherit=True)
     p.implements(p.IPackageController, inherit=True)
+
+    # Note: The IActions interface can be implemented only by
+    # one subclass of this class
+    p.implements(p.IActions, inherit=True)
 
     _instance = None
     _helpers_loaded = False
@@ -229,6 +284,12 @@ class _BaseDataset(tk.DefaultDatasetForm):
         pkg_dict['type'] = 'Dataset Types'
         return pkg_dict
 
+    # IAction interface implementation
+    def get_actions(self):
+        log.debug('get_actions() called')
+        return {
+                 'package_update': pkg_update
+        }
 
 # TODO: Made an attempt to implement all custom dataset types in one plugin
 # From the tests, it seems it works for creating specific dataset type. However, it
@@ -462,7 +523,6 @@ class DefaultDatasetPlugin(p.SingletonPlugin, tk.DefaultDatasetForm):
     p.implements(p.IDatasetForm, inherit=True)
     p.implements(p.IRoutes, inherit=True)
     p.implements(p.IPackageController, inherit=True)
-    #p.implements(p.IMapper, inherit=True)
 
     def is_fallback(self):
         # Return True to register this plugin as the handler for
@@ -518,12 +578,18 @@ class DefaultDatasetPlugin(p.SingletonPlugin, tk.DefaultDatasetForm):
         my_instance = instance
     '''
 
+
 class ModelPackagePlugin(p.SingletonPlugin, _BaseDataset):
     p.implements(p.IDatasetForm, inherit=True)
     p.implements(p.ITemplateHelpers, inherit=True)
     p.implements(p.IConfigurer, inherit=True)
     p.implements(p.IRoutes, inherit=True)
     p.implements(p.IPackageController, inherit=True)
+
+    # Note: only one subclass of the _BaseDataset class can implement the IActions interface
+    # Therefore, we are not using the following statement in other dataset types that inherit
+    # from _BaseDataset class
+    p.implements(p.IActions, inherit=True)
 
     def get_helpers(self):
         helpers = super(ModelPackagePlugin, self).get_helpers()
@@ -620,6 +686,9 @@ class ModelPackagePlugin(p.SingletonPlugin, _BaseDataset):
 
         return data_dict
 
+    # IAction interface implementation
+    # def get_actions(self):
+    #     return super(ModelPackagePlugin, self).get_actions()
 
 class MultidimensionalSpaceTimePlugin(p.SingletonPlugin, _BaseDataset):
     p.implements(p.IDatasetForm, inherit=True)
@@ -857,6 +926,7 @@ class ModelConfigurationPlugin(p.SingletonPlugin, _BaseDataset):
     p.implements(p.IDatasetForm, inherit=True)
     p.implements(p.IConfigurer, inherit=True)
     p.implements(p.IRoutes, inherit=True)
+    #p.implements(p.IActions, inherit=True)
 
     def package_types(self):
         # This plugin only handles the special custom package type (model-configuration), so it
@@ -918,4 +988,6 @@ class ModelConfigurationPlugin(p.SingletonPlugin, _BaseDataset):
         dataset_type = self.package_types()[0]
         return super(ModelConfigurationPlugin, self).package_form()
 
-
+    # IAction interface implementation
+    # def get_actions(self):
+    #     return super(ModelConfigurationPlugin, self).get_actions()
