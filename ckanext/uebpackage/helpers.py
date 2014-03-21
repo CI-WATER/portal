@@ -12,6 +12,10 @@ log = logging.getLogger('ckan.logic')
 
 
 class MockTranslator(object):
+    # def __init__(self): self.x = 1
+    #
+    # def get_x(self): return self.x
+
     def gettext(self, value):
         return value
 
@@ -49,10 +53,12 @@ class StringSettings(object):
 def register_translator():
     from paste.registry import Registry
     import pylons
+
     registry = Registry()
     registry.prepare()
     translator_obj = MockTranslator()
     registry.register(pylons.translator, translator_obj)
+    log.info('Translator object was registered for the background job')
 
 
 def table(name):

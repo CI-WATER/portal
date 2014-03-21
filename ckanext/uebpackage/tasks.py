@@ -375,7 +375,7 @@ def _save_ueb_package_as_dataset(service_call_results, model_config_dataset_id):
                 "created": resource_created_date,
                 "format": 'zip',
                 "size": resource_size,
-                "description": 'UEB input model package'
+                "description": 'UEB model package'
                 }
 
     is_resource_add_success = False
