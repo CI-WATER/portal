@@ -7,6 +7,7 @@
       var outletLat = null;
       var outletLon = null;
       var isMapInDragMode = false;
+      var selectedOrganization = null;
 
       function initialize() {
         var mapOptions = {
@@ -307,9 +308,12 @@
 	{                        
 		var shapeFileName = $('#field-shapefilename').val();
 		var watershedDescription = $('#field-shapefiledescription').val();
-		if(shapeFileName.length == 0 || watershedDescription.length == 0)
+        selectedOrganization = document.getElementById("field-organizations").value;
+
+		if(shapeFileName.length == 0 || watershedDescription.length == 0 || selectedOrganization.length == 0)
 		{
-			return;
+			alert("Information required to save the watershed file is missing." + '\n' + "Please enter the required information.");
+            return;
 		}
 		else
 		{
@@ -322,7 +326,8 @@
 		document.getElementById("btn_save_as_CKAN_resource").disabled = true; 
 		outletLat = document.getElementById("lat").value;
 	  	outletLon = document.getElementById("lon").value;
-	    var CKAN_Action_URL = '/delineate/saveshapefile/' + outletLat +'/' + outletLon + '/' + shapeFileName + '/' + watershedDescription;
+
+	    var CKAN_Action_URL = '/delineate/saveshapefile/' + outletLat +'/' + outletLon + '/' + shapeFileName + '/' + watershedDescription + '/' + selectedOrganization;
 	    
 	   	$.getJSON(CKAN_Action_URL)           		
 	   		.done(function(data) { 	           			

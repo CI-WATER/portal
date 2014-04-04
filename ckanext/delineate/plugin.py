@@ -56,10 +56,10 @@ class DelineateWatershedPlugins(p.SingletonPlugin):
         # Here create route shortcuts to all your extension's controllers and their actions
         map.connect('/delineate/show_map', controller='ckanext.delineate.controllers.delineatewatershed:DelineatewatershedController', action='show_form')
         map.connect('/delineate/submit', controller = 'ckanext.delineate.controllers.delineatewatershed:DelineatewatershedController', action='submit')
-        map.connect('/delineate/delineate_ws/{lat}/{lon}', controller = 'ckanext.delineate.controllers.delineatewatershed:DelineatewatershedController', action='delineate_ws')
-        map.connect('/delineate/showWatershed/{shapeFileType}', controller = 'ckanext.delineate.controllers.delineatewatershed:DelineatewatershedController', action='showWatershed')
-        map.connect('/delineate/downloadshapefile', controller = 'ckanext.delineate.controllers.delineatewatershed:DelineatewatershedController', action='downloadshapefile')
-        map.connect('/delineate/saveshapefile/{lat}/{lon}/{shape_file_name}/{watershed_des}', controller = 'ckanext.delineate.controllers.delineatewatershed:DelineatewatershedController', action='saveshapefile')
+        map.connect('/delineate/delineate_ws/{lat}/{lon}', controller='ckanext.delineate.controllers.delineatewatershed:DelineatewatershedController', action='delineate_ws')
+        map.connect('/delineate/showWatershed/{shapeFileType}', controller='ckanext.delineate.controllers.delineatewatershed:DelineatewatershedController', action='showWatershed')
+        map.connect('/delineate/downloadshapefile', controller='ckanext.delineate.controllers.delineatewatershed:DelineatewatershedController', action='downloadshapefile')
+        map.connect('/delineate/saveshapefile/{lat}/{lon}/{shape_file_name}/{watershed_des}/{organization}', controller='ckanext.delineate.controllers.delineatewatershed:DelineatewatershedController', action='saveshapefile')
         return map
 
     #ITemplateHelpers method implementation

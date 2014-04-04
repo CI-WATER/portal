@@ -94,10 +94,10 @@ class DelineatewatershedController(base.BaseController):
             base.response.body = 'CKAN shape file download error'
             base.response.status_int = 404
 
-    def saveshapefile(self, lat, lon, shape_file_name, watershed_des):
-        return self._save_shape_file_as_resource(lat, lon, shape_file_name, watershed_des)
+    def saveshapefile(self, lat, lon, shape_file_name, watershed_des, organization):
+        return self._save_shape_file_as_resource(lat, lon, shape_file_name, watershed_des, organization)
         
-    def _save_shape_file_as_resource(self, lat, lon, shape_file_name, watershed_des):
+    def _save_shape_file_as_resource(self, lat, lon, shape_file_name, watershed_des, organization):
         source = 'delineate.delineatewatershed._save_shape_file_as_resource():'
         ajax_response = d_helper.AJAXResponse()
 
@@ -161,11 +161,20 @@ class DelineatewatershedController(base.BaseController):
         pkg_name = shape_file_name.replace(' ', '-').lower()
         data_dict = {
                     'name': pkg_name + '_' + unique_postfix,
+                    'type': 'geographic-feature-set',
                     'title': pkg_title,  # + unique_postfix
                     'author': tk.c.userObj.name if tk.c.userObj else tk.c.author,   # TODO: userObj is None always. Need to retrieve user full name
                     'notes': 'This is a dataset that contains a watershed shape zip file for an outlet'
                              ' location at latitude:%s and longitude:%s' % (lat, lon),
-                    'extras': [{'key': 'DataSetType', 'value': 'Watershed Shape File'}]
+                    'owner_org': organization,
+                    'variable_name': '',  # extra metadata field begins from here
+                    'variable_unit': '',
+                    'north_extent': '',
+                    'south_extent': '',
+                    'east_extent': '',
+                    'west_extent': '',
+                    'projection': 'WGS_1984',   # this what our delineation service sets for the watershed
+                    'dataset_type': 'geographic-feature-set'
                     }
         
         context = {'model': base.model, 'session': base.model.Session, 'user': tk.c.user or tk.c.author, 'save': 'save'}
@@ -185,7 +194,7 @@ class DelineatewatershedController(base.BaseController):
         
         # add the uploaded ueb request data file as a resource to the above dataset
         resource_create_action = tk.get_action('resource_create') 
-        
+
         data_dict = {
                         "package_id": pkg_id,  # id of the package/dataset to which the resource needs to be added
                         "url": resource_url,
@@ -194,10 +203,9 @@ class DelineatewatershedController(base.BaseController):
                         "format": "zip",
                         "size": resource_size,
                         "description": watershed_des,
-                        "resource_type": 'file.upload',
-                        "ResourceType": 'Shape File'  # extra metadata field
+                        "resource_type": 'file.upload'
                     }
-       
+
         try:
             resource_create_action(context, data_dict)
             log.info(source + 'Watershed shape zip file was added as a resource under a dataset'
