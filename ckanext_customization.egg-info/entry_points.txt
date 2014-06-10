@@ -1,0 +1,5 @@
+
+        [ckan.plugins]
+	# Add plugins here, eg
+	ciwater_customization=ckanext.customization.plugin:CustomizationPlugins
+	

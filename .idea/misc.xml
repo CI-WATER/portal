@@ -32,6 +32,11 @@
     </entry>
   </component>
   <component name="ProjectRootManager" version="2" project-jdk-name="Python 2.7.3 (/usr/bin/python2.7)" project-jdk-type="Python SDK" />
+  <component name="PyConsoleOptionsProvider">
+    <option name="myPythonConsoleState">
+      <console-settings />
+    </option>
+  </component>
   <component name="masterDetails">
     <states>
       <state key="ScopeChooserConfigurable.UI">
