@@ -1,4 +1,4 @@
-ckanext-delineate
-=================
+portal
+======
 
-A CKAN extension for delineating watershed. It uses EPA web service for delineation. Work is under progress.
+This is the main CI-WATER web portal, which is an implementation of CKAN.
