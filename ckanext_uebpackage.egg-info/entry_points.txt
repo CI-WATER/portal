@@ -1,0 +1,8 @@
+
+    [ckan.plugins]
+	# Add plugins here, eg	
+	ueb_package =ckanext.uebpackage.plugin:UebPackagePlugins
+	
+	[ckan.celery_task]
+	tasks = ckanext.uebpackage.celery_import:task_imports
+	

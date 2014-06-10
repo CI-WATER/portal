@@ -1,0 +1,32 @@
+{% import 'macros/form.html' as form %}
+{#
+  Example:
+
+  {% snippet 'snippets/file_selection_dropdown.html', dict={'div_id': 'output_controlFile', 'field_id': 'field-outputControlFile, 'field-name': 'outputControlFile', 'selected_file': data.outputControlFile}, files=c.ueb_data_files, file_select_errors=errors.outputControlFile, file_format_errors=errors.usicgridfileformat %}
+
+#}
+
+<div id="{{ dict['div_id'] }}" class="control-group control-medium control-select">
+    <div class="controls">
+        <select id="{{ dict['field_id'] }}" name="{{ dict['field-name'] }}" data-module="autocomplete">
+            {% for file in files %}
+                <option value="{{ file.id }}" {% if dict['selected_file'] == file.id %} selected="selected" {% endif %}>{{ file.name }}</option>
+            {% endfor %}
+        </select>
+        {% snippet 'snippets/form_field_error.html', field_errors=file_select_errors %}
+        {% if dict['file_format_control'] == True %}
+
+            {{ form.input( dict['format_field_name'], label =  dict['label'], type='text', value=  dict['file_format'],
+                          id= dict['field-fileformat_id'], placeholder= dict['placeholder'], error=file_format_errors,
+                          classes=['control-medium'])
+            }}
+
+            {#
+            {{ form.input('usicgridfileformat', label = _('NetCDF data dimension and variable details'), type='text', value=data.usicgridfileformat,
+                          id='field-usicgridfileformat', placeholder= _('X:name of x-coordinate;Y:name of y-coordinate;D:name of data variable'), error=errors.usicgridfileformat,
+                          classes=['control-medium'])
+            }}
+            #}
+        {% endif %}
+    </div>
+</div>
