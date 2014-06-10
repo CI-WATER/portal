@@ -1,0 +1,68 @@
+// Compile this file to generate the ciwater.css file which is similar to the
+// main.css file of the CKAN
+
+// How to compile:
+// 1. open a console window at the public folder of this extension
+// 2. run command:  lessc less/main.less base/css/ciwater.css
+// 3. To generate a min compressed version, run: lessc -x less/main.less base/css/ciwater.min.css
+
+
+
+// Bootstrap imports
+
+// CSS Reset
+@import "../vendor/flatstrap-master/assets/less/reset.less";
+
+// Core variables and mixins
+@import "../vendor/flatstrap-master/assets/less/variables.less"; // Modify this for custom colors, font-sizes, etc
+@import "../vendor/flatstrap-master/assets/less/mixins.less";
+
+// Grid system and page structure
+@import "../vendor/flatstrap-master/assets/less/scaffolding.less";
+@import "../vendor/flatstrap-master/assets/less/grid.less";
+@import "../vendor/flatstrap-master/assets/less/layouts.less";
+
+// Base CSS
+@import "../vendor/flatstrap-master/assets/less/type.less";
+@import "../vendor/flatstrap-master/assets/less/code.less";
+@import "../vendor/flatstrap-master/assets/less/forms.less";
+@import "../vendor/flatstrap-master/assets/less/tables.less";
+
+// Components: common
+// @import "../vendor/flatstrap-master/assets/less/sprites.less"; // Replaced by font-awesome.less
+@import "../vendor/flatstrap-master/assets/less/font-awesome/font-awesome.less"; //PK added this one
+@import "../vendor/flatstrap-master/assets/less/dropdowns.less";
+@import "../vendor/flatstrap-master/assets/less/wells.less";
+@import "../vendor/flatstrap-master/assets/less/component-animations.less";
+@import "../vendor/flatstrap-master/assets/less/close.less";
+
+// Components: Buttons & Alerts
+@import "../vendor/flatstrap-master/assets/less/buttons.less";
+@import "../vendor/flatstrap-master/assets/less/button-groups.less";
+@import "../vendor/flatstrap-master/assets/less/alerts.less"; // Note: alerts share common CSS with buttons and thus have styles in buttons.less
+
+// Components: Nav
+@import "../vendor/flatstrap-master/assets/less/navs.less";
+@import "../vendor/flatstrap-master/assets/less/navbar.less";
+@import "../vendor/flatstrap-master/assets/less/breadcrumbs.less";
+@import "../vendor/flatstrap-master/assets/less/pagination.less";
+@import "../vendor/flatstrap-master/assets/less/pager.less";
+
+// Components: Popovers
+@import "../vendor/flatstrap-master/assets/less/modals.less";
+@import "../vendor/flatstrap-master/assets/less/tooltip.less";
+
+// Components: Misc
+@import "../vendor/flatstrap-master/assets/less/thumbnails.less";
+@import "../vendor/flatstrap-master/assets/less/labels-badges.less";
+@import "../vendor/flatstrap-master/assets/less/progress-bars.less";
+@import "../vendor/flatstrap-master/assets/less/accordion.less";
+@import "../vendor/flatstrap-master/assets/less/carousel.less";
+@import "../vendor/flatstrap-master/assets/less/hero-unit.less";
+@import "../vendor/flatstrap-master/assets/less/popovers.less";
+
+// Utility classes
+@import "../vendor/flatstrap-master/assets/less/utilities.less"; // Has to be last to override when necessary
+
+// CKAN
+@import "ckan.less";
