@@ -1,0 +1,25 @@
+{% ckan_extends %}
+
+{# {% set allow_upload = allow_upload %}#}
+{% block basic_fields_data %}
+     {%- block scripts %}
+        {% resource 'custom_dataset_resources/scripts/module/custom-resource-upload-field.js' %}
+     {% endblock -%}
+      <div class="controls"{% if allow_upload %} data-module="custom-resource-upload-field" data-module-dataset_type= {{ dataset_type }}{% endif %}>
+        {#
+        This block uses a slightly odd pattern. Unlike the rest of the radio
+        buttons which are wrapped _inside_ the labels here we place the label
+        after the input. This enables us to style the label based on the state
+        of the radio using css. eg. input[type=radio]+label {}
+        #}
+        <i class="ckan-icon ckan-icon-link-file"></i>
+        <input id="field-resource-type-file" type="radio" name="resource_type" checked="checked" value="file" />
+        <label class="radio inline" for="field-resource-type-file">{{ _('Link to a file') }}</label>
+        <i class="ckan-icon ckan-icon-link-plugin"></i>
+        <input id="field-resource-type-api" type="radio" name="resource_type" value="api" />
+        <label class="radio inline" for="field-resource-type-api">{{ _('Link to an API') }}</label>
+      </div>
+    </div>
+{% endblock %}
+{% block metadata_fields %}
+{% endblock %}

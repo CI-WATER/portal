@@ -1,0 +1,96 @@
+{% ckan_extends %}
+
+{% block package_additional_info %}
+    {{ super() }}
+
+    {# { h.snippet('package/snippets/custom_metadata_item_info.html', fld_name='Dataset Type', fld_value=pkg_dict.dataset_type) } #}
+
+    {% if pkg_dict.pkg_model_name %}
+        {{ h.snippet('package/snippets/custom_metadata_item_info.html', fld_name='Model name', fld_value=pkg_dict.pkg_model_name) }}
+    {% endif %}
+
+    {% if pkg_dict.model_version %}
+        {{ h.snippet('package/snippets/custom_metadata_item_info.html', fld_name='Model version', fld_value=pkg_dict.model_version) }}
+    {% endif %}
+
+    {% if pkg_dict.variable_names %}
+        {{ h.snippet('package/snippets/custom_metadata_item_info.html', fld_name='Variable names', fld_value=pkg_dict.variable_names) }}
+    {% endif %}
+
+    {% if pkg_dict.variable_units %}
+        {{ h.snippet('package/snippets/custom_metadata_item_info.html', fld_name='Variable units', fld_value=pkg_dict.variable_units) }}
+    {% endif %}
+
+    {% if pkg_dict.variable_name %}
+        {{ h.snippet('package/snippets/custom_metadata_item_info.html', fld_name='Variable name', fld_value=pkg_dict.variable_name) }}
+    {% endif %}
+
+    {% if pkg_dict.variable_unit %}
+        {{ h.snippet('package/snippets/custom_metadata_item_info.html', fld_name='Variable unit', fld_value=pkg_dict.variable_unit) }}
+    {% endif %}
+
+    {# applies to both 'model-package' and 'multidimensional-space-time' and 'geographic-feature-set' #}
+    {% if pkg_dict.north_extent %}
+        {{ h.snippet('package/snippets/custom_metadata_item_info.html', fld_name='Domain Extent:', fld_value='') }}
+        {{ h.snippet('package/snippets/custom_metadata_item_info.html', fld_name='North', fld_value=pkg_dict.north_extent) }}
+        {{ h.snippet('package/snippets/custom_metadata_item_info.html', fld_name='West', fld_value=pkg_dict.west_extent) }}
+        {{ h.snippet('package/snippets/custom_metadata_item_info.html', fld_name='South', fld_value=pkg_dict.south_extent) }}
+        {{ h.snippet('package/snippets/custom_metadata_item_info.html', fld_name='East', fld_value=pkg_dict.east_extent) }}
+    {% endif %}
+
+    {% if pkg_dict.simulation_start_day %}
+        {{ h.snippet('package/snippets/custom_metadata_item_info.html', fld_name='Simulation start day', fld_value=pkg_dict.simulation_start_day) }}
+    {% endif %}
+
+    {% if pkg_dict.simulation_end_day %}
+        {{ h.snippet('package/snippets/custom_metadata_item_info.html', fld_name='Simulation end day', fld_value=pkg_dict.simulation_end_day) }}
+    {% endif %}
+
+    {% if pkg_dict.time_step %}
+        {{ h.snippet('package/snippets/custom_metadata_item_info.html', fld_name='Time step (hr)', fld_value=pkg_dict.time_step) }}
+    {% endif %}
+
+    {% if pkg_dict.package_type %}
+        {{ h.snippet('package/snippets/custom_metadata_item_info.html', fld_name='Package type', fld_value=pkg_dict.package_type) }}
+    {% endif %}
+
+    {% if pkg_dict.data_start_day %}
+        {{ h.snippet('package/snippets/custom_metadata_item_info.html', fld_name='Data start day', fld_value=pkg_dict.data_start_day) }}
+    {% endif %}
+
+    {% if pkg_dict.data_end_day %}
+        {{ h.snippet('package/snippets/custom_metadata_item_info.html', fld_name='Data end day', fld_value=pkg_dict.data_end_day) }}
+    {% endif %}
+
+    {% if pkg_dict.cell_size %}
+        {{ h.snippet('package/snippets/custom_metadata_item_info.html', fld_name='Cell size', fld_value=pkg_dict.cell_size) }}
+    {% endif %}
+
+    {% if pkg_dict.projection %}
+        {{ h.snippet('package/snippets/custom_metadata_item_info.html', fld_name='Projection', fld_value=pkg_dict.projection) }}
+    {% endif %}
+
+    {% if pkg_dict.model_name %}
+        {{ h.snippet('package/snippets/custom_metadata_item_info.html', fld_name='Model name', fld_value=pkg_dict.model_name) }}
+    {% endif %}
+
+    {% if pkg_dict.processing_status %}
+        {{ h.snippet('package/snippets/custom_metadata_item_info.html', fld_name='Package build request status', fld_value=pkg_dict.processing_status) }}
+    {% endif %}
+
+    {% if pkg_dict.package_build_request_job_id %}
+        {{ h.snippet('package/snippets/custom_metadata_item_info.html', fld_name='Package build request job ID', fld_value=pkg_dict.package_build_request_job_id) }}
+    {% endif %}
+
+    {% if pkg_dict.package_run_status %}
+        {{ h.snippet('package/snippets/custom_metadata_item_info.html', fld_name='Package run status', fld_value=pkg_dict.package_run_status) }}
+    {% endif %}
+
+    {% if pkg_dict.package_run_job_id %}
+        {{ h.snippet('package/snippets/custom_metadata_item_info.html', fld_name='Package run job ID', fld_value=pkg_dict.package_run_job_id) }}
+    {% endif %}
+
+    {% if pkg_dict.package_availability %}
+        {{ h.snippet('package/snippets/custom_metadata_item_info.html', fld_name='Package availability', fld_value=pkg_dict.package_availability) }}
+    {% endif %}
+{% endblock %}

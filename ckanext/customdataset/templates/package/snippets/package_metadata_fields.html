@@ -1,0 +1,20 @@
+{% ckan_extends %}
+
+{% set dataset_type = h.custom_dataset_type() %}
+
+
+{# Remove 'free extras' from the package form. If you're using
+convert_to/from_extras() as we are with our custom data fields for custom datasets then
+you need to remove free extras from the form, or editing your custom field
+won't work. #}
+
+
+{% block package_metadata_fields_custom %}
+  {% block custom_fields %}
+    {% if dataset_type == 'dataset' %}
+        {{ super() }}
+    {% endif %}
+  {% endblock %}
+{% endblock %}
+
+

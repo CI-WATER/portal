@@ -1,0 +1,68 @@
+{% ckan_extends %}
+
+{%- block scripts %}
+  {{ super() }}
+  {% resource 'custom_dataset_resources/css/main.css' %}
+
+{% endblock -%}
+
+{% block package_basic_fields_custom %}
+  {% set dataset_type = h.custom_dataset_type() %}
+  <input type="hidden" name="dataset_type" value="{{ dataset_type }}" />
+
+  {% if dataset_type == 'model-package' %}
+    {{ form.input('pkg_model_name', label=_('Model name*'), id='field-pkg_model_name', placeholder=_('UEB'), value=data.pkg_model_name, error=errors.pkg_model_name, classes=['control-medium']) }}
+    {{ form.input('model_version', label=_('Model version*'), id='field-model_version', placeholder=_('1.0'), value=data.model_version, error=errors.model_version, classes=['control-medium']) }}
+  {% endif %}
+
+  {% if dataset_type == 'multidimensional-space-time' or dataset_type == 'geographic-raster' %}
+    {{ form.input('variable_names', label=_('Variable names'), id='field-variable_names', placeholder=_('Prec, RH, Wind, ...'), value=data.variable_names, error=errors.variable_names, classes=['control-medium']) }}
+    {{ form.input('variable_units', label=_('Variable units'), id='field-variable_units', placeholder=_('cm/day, %, m/sec, ...'), value=data.variable_units, error=errors.variable_units, classes=['control-medium']) }}
+  {% endif %}
+
+  {% if dataset_type == 'geographic-feature-set' %}
+    {{ form.input('variable_name', label=_('Variable name'), id='field-variable_name', placeholder=_('Prec'), value=data.variable_name, error=errors.variable_name, classes=['control-medium']) }}
+    {{ form.input('variable_unit', label=_('Variable unit'), id='field-variable-unit', placeholder=_('cm/day'), value=data.variable_unit, error=errors.variable_unit, classes=['control-medium']) }}
+  {% endif %}
+
+  {% if dataset_type == 'model-package' or dataset_type == 'multidimensional-space-time' or dataset_type == 'geographic-feature-set' or dataset_type == 'geographic-raster' %}
+    <h5>Domain Extent:</h5>
+    <hr>
+    {{ form.input('north_extent', label=_('North'), id='field-north_extent', placeholder=_('114.006'), value=data.north_extent, error=errors.north_extent, classes=['control-medium']) }}
+    {{ form.input('west_extent', label=_('West'), id='field-west_extent', placeholder=_('32.1823'), value=data.west_extent, error=errors.west_extent, classes=['control-medium']) }}
+    {{ form.input('south_extent', label=_('South'), id='field-south_extent', placeholder=_('-113.806'), value=data.south_extent, error=errors.south_extent, classes=['control-medium']) }}
+    {{ form.input('east_extent', label=_('East'), id='field-east_extent', placeholder=_('32.2823'), value=data.east_extent, error=errors.east_extent, classes=['control-medium']) }}
+    <hr>
+  {% endif %}
+
+  {% if dataset_type == 'model-package' %}
+    {{ form.input('simulation_start_day', label=_('Simulation start day'), id='field-simulation_start_day', placeholder=_('01/02/2005'), value=data.simulation_start_day, error=errors.simulation_start_day, classes=['control-medium']) }}
+    {{ form.input('simulation_end_day', label=_('Simulation end day'), id='field-simulation_end_day', placeholder=_('01/02/2010'), value=data.simulation_end_day, error=errors.simulation_end_day, classes=['control-medium']) }}
+    {{ form.input('time_step', label=_('Time step (hr)'), id='field-time_step', placeholder=_('4'), value=data.time_step, error=errors.time_step, classes=['control-medium']) }}
+
+      <div class="control-group">
+        <label class="control-label" for="field-package_type">{{ _("Package type") }}</label>
+        <div class="controls">
+          <select id="field-package_type" name="package_type" data-module="autocomplete">
+            {% for package_type in h.model_package_types()  %}
+              <option value="{{ package_type }}" {% if package_type in data.get('package_type', []) %}selected="selected"{% endif %}>{{ package_type }}</option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+  {% endif %}
+
+  {% if dataset_type == 'multidimensional-space-time' %}
+    {{ form.input('data_start_day', label=_('Data start day'), id='field-data_start_day', placeholder=_('01/02/2005'), value=data.data_start_day, error=errors.data_start_day, classes=['control-medium']) }}
+    {{ form.input('data_end_day', label=_('Data end day'), id='field-data_end_day', placeholder=_('01/02/2010'), value=data.data_end_day, error=errors.data_end_day, classes=['control-medium']) }}
+  {% endif %}
+
+  {% if dataset_type == 'geographic-raster'%}
+    {{ form.input('cell_size', label=_('Cell size'), id='field-cell_size', placeholder=_('100'), value=data.cell_size, error=errors.cell_size, classes=['control-medium']) }}
+  {% endif %}
+
+  {% if dataset_type == 'multidimensional-space-time' or dataset_type == 'geographic-feature-set' or dataset_type == 'geographic-raster'%}
+    {{ form.input('projection', label=_('Projection'), id='field-projection', placeholder=_('NAD 1983'), value=data.projection, error=errors.projection, classes=['control-medium']) }}
+  {% endif %}
+
+{% endblock %}
