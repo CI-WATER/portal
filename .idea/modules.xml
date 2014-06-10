@@ -2,7 +2,7 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
-      <module fileurl="file://$PROJECT_DIR$/.idea/ckanext-uebpackage.iml" filepath="$PROJECT_DIR$/.idea/ckanext-uebpackage.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/ckanext-delineate.iml" filepath="$PROJECT_DIR$/.idea/ckanext-delineate.iml" />
     </modules>
   </component>
 </project>

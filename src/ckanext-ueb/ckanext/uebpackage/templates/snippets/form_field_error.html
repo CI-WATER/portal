@@ -1,0 +1,10 @@
+{#
+  Example:
+
+  {% snippet 'snippets/form_field_error.html', field_errors=errors %}
+
+#}
+
+{% if field_errors and field_errors is iterable %}
+    <span class="error-block">{{ field_errors | join(', ') }}</span>
+{% endif %}
