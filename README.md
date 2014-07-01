@@ -1,4 +1,4 @@
-ckanext-customization
-=====================
+CKAN Extensions for CI-WATER Portal
+===================================
 
-This CKAN extension is for customizing the UI layer of CIWATER Portal.
+Source code for all custom extensions/plugins used in CI-WATER Web Portal can be found here.
