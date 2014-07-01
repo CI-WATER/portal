@@ -51,7 +51,7 @@
     {% endif %}
 
     {% if pkg_dict.package_type %}
-        {{ h.snippet('package/snippets/custom_metadata_item_info.html', fld_name='Package type', fld_value=pkg_dict.package_type) }}
+        {{ h.snippet('package/snippets/custom_metadata_item_info.html', fld_name='Package type', fld_value=pkg_dict.package_type[0]) }}
     {% endif %}
 
     {% if pkg_dict.data_start_day %}

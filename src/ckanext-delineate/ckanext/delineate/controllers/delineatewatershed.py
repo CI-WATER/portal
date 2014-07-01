@@ -5,6 +5,8 @@ import ckan.plugins as p
 from ckan.controllers import storage
 from datetime import datetime
 from ckan.common import _
+import ckan.lib.uploader as uploader
+import ckan.lib.munge as munge
 import os
 import shutil
 import httplib
@@ -103,21 +105,24 @@ class DelineatewatershedController(base.BaseController):
 
         if not self._validate_file_name(shape_file_name):
             ajax_response.success = False
-            ajax_response.message = 'Invalid shape file name:%s.' % shape_file_name
+            ajax_response.message = 'Invalid shape file name:%s.' % shape_file_name + '\nFile name needs to have only ' \
+                                                                                      'alphanumeric characters and ' \
+                                                                                      'dash, hyphen or space characters.'
             return ajax_response.to_json()
 
+        # TODO: make the saving of the file to temp directory a separate function
         ckan_default_dir = d_helper.StringSettings.ckan_user_session_temp_dir
-        session_id = base.session['id']  # base.session.id
+        session_id = base.session['id']
         shape_files_source_dir = os.path.join(ckan_default_dir, session_id, 'ShapeFiles')
         target_zip_dir = os.path.join(ckan_default_dir, session_id, 'ShapeZippedFile') 
-        shape_zip_file = os.path.join(target_zip_dir,  shape_file_name + '.zip')
+        shape_zip_file = os.path.join(target_zip_dir, shape_file_name + '.zip')
 
         if not os.path.isdir(shape_files_source_dir):
             log.error(source + 'CKAN error: Expected shape file source dir path (%s) is missing.'
                       % shape_files_source_dir)
 
             ajax_response.success = False
-            ajax_response.message = _('CKAN error:Expected shape files source dir path is missing.')
+            ajax_response.message = _('Failed to save the watershed shape file.')
             return ajax_response.to_json()
 
         if not os.path.exists(shape_zip_file):
@@ -132,26 +137,8 @@ class DelineatewatershedController(base.BaseController):
                 zipper.write(file_to_zip, os.path.basename(file_to_zip), compress_type=zipfile.ZIP_DEFLATED)
             
             zipper.close()
-        
-        try:
-            # upload the file to CKAN file store
-            resource_metadata = self._upload_file(shape_zip_file)
-        except Exception as e:
-            log.error(source + 'CKAN error: Failed to upload shape file as a resource. Exception: %s.' % e)
-            ajax_response.success = False
-            ajax_response.message = _('CKAN error:Failed to upload shape file as a resource.')
-            return ajax_response.to_json()
-        
-        # retrieve some of the file meta data
-        resource_url = resource_metadata.get('_label') # this will return datetime stamp/filename
-        resource_url = base.h.url_for('storage_file', label=resource_url, qualified=False)
-        if resource_url.startswith('/'):
-            resource_url = base.config.get('ckan.site_url','').rstrip('/') + resource_url
-        
-        resource_created_date = resource_metadata.get('_creation_date')
-        resource_name = resource_metadata.get('filename_original')
-        resource_size = resource_metadata.get('_content_length')
-        
+
+        # TODO: make the creation of a new package a new function
         # create a package
         package_create_action = tk.get_action('package_create')
         
@@ -162,10 +149,10 @@ class DelineatewatershedController(base.BaseController):
         data_dict = {
                     'name': pkg_name + '_' + unique_postfix,
                     'type': 'geographic-feature-set',
-                    'title': pkg_title,  # + unique_postfix
+                    'title': pkg_title,
                     'author': tk.c.userObj.name if tk.c.userObj else tk.c.author,   # TODO: userObj is None always. Need to retrieve user full name
                     'notes': 'This is a dataset that contains a watershed shape zip file for an outlet'
-                             ' location at latitude:%s and longitude:%s' % (lat, lon),
+                             ' location at latitude:%s and longitude:%s. ' % (lat, lon) + watershed_des,
                     'owner_org': organization,
                     'variable_name': '',  # extra metadata field begins from here
                     'variable_unit': '',
@@ -186,40 +173,45 @@ class DelineatewatershedController(base.BaseController):
                                ' a resource.\n Exception: %s' % e)
 
             ajax_response.success = False
-            ajax_response.message = _('CKAN error: Failed to create a new dataset for'
+            ajax_response.message = _('Failed to create a new dataset for'
                                       ' saving watershed shape file as a resource.')
             return ajax_response.to_json()
 
-        pkg_id = pkg_dict['id']
-        
-        # add the uploaded ueb request data file as a resource to the above dataset
-        resource_create_action = tk.get_action('resource_create') 
+        # TODO: make the add resource to a package a new function
+        if not 'resources' in pkg_dict:
+            pkg_dict['resources'] = []
 
-        data_dict = {
-                        "package_id": pkg_id,  # id of the package/dataset to which the resource needs to be added
-                        "url": resource_url,
-                        "name": resource_name,
-                        "created": resource_created_date,
-                        "format": "zip",
-                        "size": resource_size,
-                        "description": watershed_des,
-                        "resource_type": 'file.upload'
-                    }
+        file_name = munge.munge_filename(shape_file_name + '.zip')
+        resource = {'url': file_name, 'url_type': 'upload'}
+        upload = uploader.ResourceUpload(resource)
+        upload.filename = file_name
+        upload.upload_file = open(shape_zip_file, 'r')
+        data_dict = {'format': 'zip', 'name': file_name, 'url': file_name, 'url_type': 'upload'}
+        pkg_dict['resources'].append(data_dict)
 
         try:
-            resource_create_action(context, data_dict)
-            log.info(source + 'Watershed shape zip file was added as a resource under a dataset'
-                              ' name:%s' % pkg_title + unique_postfix)
+            context['defer_commit'] = True
+            context['use_cache'] = False
+            # update the package
+            package_update_action = tk.get_action('package_update')
+            package_update_action(context, pkg_dict)
+            context.pop('defer_commit')
         except Exception as e:
-            log.error(source + 'Failed to add the watershed shape zip file as a resource.\nException: %s' % e)
+            log.error(source + 'Failed to update the new dataset for adding watershed shape file as'
+                               ' a resource.\n Exception: %s' % e)
+
             ajax_response.success = False
-            ajax_response.message = _('CKAN error:Failed to add the watershed shape zip file as a resource.')
+            ajax_response.message = _('Failed to save watershed shape file as a resource.')
             return ajax_response.to_json()
-            
+
+        # Get out resource_id resource from model as it will not appear in
+        # package_show until after commit
+        upload.upload(context['package'].resources[-1].id, uploader.get_max_resource_size())
+        base.model.repo.commit()
         ajax_response.success = True
         ajax_response.message = _('Watershed shape file was saved as a resource.')
         return ajax_response.to_json()
-    
+
     def _send_latlon_values_request_to_app_server(self, shapeFileType):
         source = 'delineate.delineatewatershed._send_latlon_values_request_to_app_server():'
 

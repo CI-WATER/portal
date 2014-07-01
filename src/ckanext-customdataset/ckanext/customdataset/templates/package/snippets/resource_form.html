@@ -1,25 +1,35 @@
 {% ckan_extends %}
 
-{# {% set allow_upload = allow_upload %}#}
-{% block basic_fields_data %}
-     {%- block scripts %}
-        {% resource 'custom_dataset_resources/scripts/module/custom-resource-upload-field.js' %}
-     {% endblock -%}
-      <div class="controls"{% if allow_upload %} data-module="custom-resource-upload-field" data-module-dataset_type= {{ dataset_type }}{% endif %}>
-        {#
-        This block uses a slightly odd pattern. Unlike the rest of the radio
-        buttons which are wrapped _inside_ the labels here we place the label
-        after the input. This enables us to style the label based on the state
-        of the radio using css. eg. input[type=radio]+label {}
-        #}
-        <i class="ckan-icon ckan-icon-link-file"></i>
-        <input id="field-resource-type-file" type="radio" name="resource_type" checked="checked" value="file" />
-        <label class="radio inline" for="field-resource-type-file">{{ _('Link to a file') }}</label>
-        <i class="ckan-icon ckan-icon-link-plugin"></i>
-        <input id="field-resource-type-api" type="radio" name="resource_type" value="api" />
-        <label class="radio inline" for="field-resource-type-api">{{ _('Link to an API') }}</label>
-      </div>
-    </div>
+{% block basic_fields_url %}
+    {%- block scripts %}
+        {% resource 'custom_dataset_resources/scripts/module/custom-image-upload.js' %}
+    {% endblock -%}
+    {% set is_upload = (data.url_type == 'upload') %}
+    {% set placeholder = false  %}
+    {% set url_label = _('URL') %}
+    {% set upload_label = ('File')  %}
+    {% set is_upload_enabled=h.uploads_enabled() %}
+    {% set field_url='url' %}
+    {% set field_upload='upload' %}
+    {% set field_clear='clear_upload' %}
+    {% set is_url=data.url and not is_upload %}
+
+    {% if is_upload_enabled %}
+      <div class="image-upload" data-module="custom-image-upload" data-module-is_url="{{ 'true' if is_url else 'false' }}" data-module-is_upload="{{ 'true' if is_upload else 'false' }}"
+           data-module-field_url="{{ field_url }}" data-module-field_upload="{{ field_upload }}" data-module-field_clear="{{ field_clear }}" data-module-upload_label="{{ upload_label }}" data-module-dataset_type={{ dataset_type }}>
+    {% endif %}
+
+    {{ form.input(field_url, label=url_label, id='field-image-url', placeholder='http://datahub.org/data.txt', value=data.get(field_url), error=errors.get(field_url), classes=['control-full']) }}
+
+    {% if is_upload_enabled %}
+        {{ form.input(field_upload, label=upload_label, id='field-image-upload', type='file', placeholder='', value='', error='', classes=['control-full']) }}
+        {% if is_upload %}
+          {{ form.checkbox(field_clear, label=_('Clear Upload'), id='field-clear-upload', value='true', error='', classes=['control-full']) }}
+        {% endif %}
+    {% endif %}
+
+    {% if is_upload_enabled %}</div>{% endif %}
 {% endblock %}
+
 {% block metadata_fields %}
 {% endblock %}

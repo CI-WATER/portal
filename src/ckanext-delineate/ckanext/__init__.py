@@ -1,7 +1,3 @@
-<<<<<<< HEAD
-
-=======
->>>>>>> remote_delineate/master
 # this is a namespace package
 try:
     import pkg_resources

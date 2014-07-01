@@ -2,6 +2,8 @@ __author__ = 'pabitra'
 import ckan.plugins as p
 import ckan.plugins.toolkit as tk
 from ckan.logic.action.update import package_update
+import validators as custom_owner_org_validator
+from ckan.logic.validators import owner_org_validator as core_owner_org_validator
 
 # ref: see this link below for explanation of validation functions
 # http://pylonsbook.com/en/1.1/working-with-forms-and-validators.html
@@ -291,6 +293,13 @@ class _BaseDataset(tk.DefaultDatasetForm):
                  'package_update': pkg_update
         }
 
+    def modify_schema(self, schema):
+        _owner_org = custom_owner_org_validator.owner_org_validator
+        if 'owner_org' in schema:
+            schema['owner_org'] = [_owner_org if f is core_owner_org_validator else f for f in schema['owner_org']]
+
+        return schema
+
 # TODO: Made an attempt to implement all custom dataset types in one plugin
 # From the tests, it seems it works for creating specific dataset type. However, it
 # does not work for editing specific dataset
@@ -539,6 +548,16 @@ class DefaultDatasetPlugin(p.SingletonPlugin, tk.DefaultDatasetForm):
         dataset_type = 'dataset'
         return super(DefaultDatasetPlugin, self).package_form()
 
+    def create_package_schema(self):
+        schema = super(DefaultDatasetPlugin, self).create_package_schema()
+        schema = self._modify_schema(schema)
+        return schema
+
+    def update_package_schema(self):
+        schema = super(DefaultDatasetPlugin, self).update_package_schema()
+        schema = self._modify_schema(schema)
+        return schema
+
     def dataset_facets(self, facets_dict, package_type):
         ''' Update the facets_dict and return it. '''
 
@@ -578,6 +597,11 @@ class DefaultDatasetPlugin(p.SingletonPlugin, tk.DefaultDatasetForm):
         my_instance = instance
     '''
 
+    def _modify_schema(self, schema):
+        _owner_org = custom_owner_org_validator.owner_org_validator
+        if 'owner_org' in schema:
+            schema['owner_org'] = [_owner_org if f is core_owner_org_validator else f for f in schema['owner_org']]
+        return schema
 
 class ModelPackagePlugin(p.SingletonPlugin, _BaseDataset):
     p.implements(p.IDatasetForm, inherit=True)
@@ -629,9 +653,11 @@ class ModelPackagePlugin(p.SingletonPlugin, _BaseDataset):
                 'dataset_type': [_not_empty, _convert_to_extras]
                 })
 
+        schema = super(ModelPackagePlugin, self).modify_schema(schema)
         return schema
 
     def create_package_schema(self):
+        create_model_package_types()
         schema = super(ModelPackagePlugin, self).create_package_schema()
         schema = self._modify_package_schema(schema)
         return schema
@@ -722,6 +748,7 @@ class MultidimensionalSpaceTimePlugin(p.SingletonPlugin, _BaseDataset):
                 'dataset_type': [_not_empty, _convert_to_extras]
                 })
 
+        schema = super(MultidimensionalSpaceTimePlugin, self).modify_schema(schema)
         return schema
 
     def create_package_schema(self):
@@ -801,6 +828,7 @@ class GeographicRasterPlugin(p.SingletonPlugin, _BaseDataset):
                 'dataset_type': [_not_empty, _convert_to_extras]
                 })
 
+        schema = super(GeographicRasterPlugin, self).modify_schema(schema)
         return schema
 
     def create_package_schema(self):
@@ -876,7 +904,7 @@ class GeographicFeatureSetPlugin(p.SingletonPlugin, _BaseDataset):
                 'projection': [_ignore_missing, _convert_to_extras],
                 'dataset_type': [_not_empty, _convert_to_extras]
                 })
-
+        schema = super(GeographicFeatureSetPlugin, self).modify_schema(schema)
         return schema
 
     def create_package_schema(self):
@@ -948,6 +976,7 @@ class ModelConfigurationPlugin(p.SingletonPlugin, _BaseDataset):
                 'package_availability': [_ignore_missing, _convert_to_extras]
                 })
 
+        schema = super(ModelConfigurationPlugin, self).modify_schema(schema)
         return schema
 
     def create_package_schema(self):
@@ -988,6 +1017,3 @@ class ModelConfigurationPlugin(p.SingletonPlugin, _BaseDataset):
         dataset_type = self.package_types()[0]
         return super(ModelConfigurationPlugin, self).package_form()
 
-    # IAction interface implementation
-    # def get_actions(self):
-    #     return super(ModelConfigurationPlugin, self).get_actions()
