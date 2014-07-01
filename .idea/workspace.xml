@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="ChangeListManager">
-    <list default="true" id="7445eb22-3c5f-4a27-ac32-c39733b17129" name="Default" comment="Updated the README file.">
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/doc/text.txt" />
+    <list default="true" id="7445eb22-3c5f-4a27-ac32-c39733b17129" name="Default" comment="">
+      <change type="DELETED" beforePath="$PROJECT_DIR$/doc/text.txt" afterPath="" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.idea/workspace.xml" afterPath="$PROJECT_DIR$/.idea/workspace.xml" />
     </list>
     <ignored path="ckanext-uebpackage.iws" />
@@ -26,19 +26,10 @@
   </component>
   <component name="FileEditorManager">
     <leaf>
-      <file leaf-file-name="README.md" pinned="false" current="false" current-in-tab="false">
+      <file leaf-file-name="README.md" pinned="false" current="true" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/README.md">
           <provider selected="true" editor-type-id="text-editor">
-            <state line="4" column="0" selection-start="166" selection-end="166" vertical-scroll-proportion="-2.88" vertical-offset="0" max-vertical-offset="180">
-              <folding />
-            </state>
-          </provider>
-        </entry>
-      </file>
-      <file leaf-file-name="text.txt" pinned="false" current="true" current-in-tab="true">
-        <entry file="file://$PROJECT_DIR$/doc/text.txt">
-          <provider selected="true" editor-type-id="text-editor">
-            <state line="0" column="0" selection-start="0" selection-end="0" vertical-scroll-proportion="0.0" vertical-offset="0" max-vertical-offset="553">
+            <state line="4" column="0" selection-start="166" selection-end="166" vertical-scroll-proportion="0.13636364" vertical-offset="0" max-vertical-offset="528">
               <folding />
             </state>
           </provider>
@@ -126,20 +117,6 @@
             </PATH_ELEMENT>
             <PATH_ELEMENT>
               <option name="myItemId" value="ciwater-portal" />
-              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PsiDirectoryNode" />
-            </PATH_ELEMENT>
-          </PATH>
-          <PATH>
-            <PATH_ELEMENT>
-              <option name="myItemId" value="ckanext-customization" />
-              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.ProjectViewProjectNode" />
-            </PATH_ELEMENT>
-            <PATH_ELEMENT>
-              <option name="myItemId" value="ciwater-portal" />
-              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PsiDirectoryNode" />
-            </PATH_ELEMENT>
-            <PATH_ELEMENT>
-              <option name="myItemId" value="doc" />
               <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PsiDirectoryNode" />
             </PATH_ELEMENT>
           </PATH>
@@ -399,7 +376,11 @@
       <created>1404235242161</created>
       <updated>1404235242161</updated>
     </task>
-    <option name="localTasksCounter" value="12" />
+    <task id="LOCAL-00012" summary="Added the doc folder">
+      <created>1404235778001</created>
+      <updated>1404235778001</updated>
+    </task>
+    <option name="localTasksCounter" value="13" />
     <servers />
   </component>
   <component name="TodoView" selected-index="4">
@@ -473,7 +454,8 @@
     <MESSAGE value="Fixed a bug in the helper is_user_owns_resource() function where resource object retrieved for the given resource_id can be null. The code now checks if the retrieved resource object is null or not before using accessing any properties of this object." />
     <MESSAGE value="Updated the latest code from individual repos to this repo (portal)" />
     <MESSAGE value="Updated the README file." />
-    <option name="LAST_COMMIT_MESSAGE" value="Updated the README file." />
+    <MESSAGE value="Added the doc folder" />
+    <option name="LAST_COMMIT_MESSAGE" value="Added the doc folder" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager />
@@ -501,14 +483,7 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/README.md">
       <provider selected="true" editor-type-id="text-editor">
-        <state line="4" column="0" selection-start="166" selection-end="166" vertical-scroll-proportion="-2.88" vertical-offset="0" max-vertical-offset="180">
-          <folding />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/doc/text.txt">
-      <provider selected="true" editor-type-id="text-editor">
-        <state line="0" column="0" selection-start="0" selection-end="0" vertical-scroll-proportion="0.0" vertical-offset="0" max-vertical-offset="553">
+        <state line="4" column="0" selection-start="166" selection-end="166" vertical-scroll-proportion="0.13636364" vertical-offset="0" max-vertical-offset="528">
           <folding />
         </state>
       </provider>
